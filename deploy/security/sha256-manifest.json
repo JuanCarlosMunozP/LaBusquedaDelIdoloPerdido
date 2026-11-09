@@ -1,0 +1,14 @@
+{
+  "algorithm": "SHA-256",
+  "purpose": "Certificacion de integridad criptografica de activos binarios sensibles (Semana 1)",
+  "files": {
+    "frontend/public/models/daniel.glb": {
+      "sha256": "93d4c73e41e3192f2d85582d6b6a347dfeab1a294dbcac7618e985ad77a75e8b",
+      "bytes": 13019508
+    },
+    "frontend/public/models/idolo.glb": {
+      "sha256": "e7c23caaa9c57a439dab92d087374e5f62417d736c96f8752e4b71b5dd8c40cc",
+      "bytes": 109648
+    }
+  }
+}
