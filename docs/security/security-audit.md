@@ -84,7 +84,7 @@ En consecuencia:
 - **Estado:** **`IMPLEMENTADO` en repositorio (Ejecución CI en GitHub Actions al hacer push)**
 - **Evidencia en repositorio:** [.github/workflows/devsecops.yml](file:///c:/Estudio/Seguridad-Multimedia/.github/workflows/devsecops.yml#L1-L91)
 - **Mecanismos verificados:**
-  - Ejecución automatizada de `vitest`, `pytest` y escaneo SAST/SCA + imágenes Docker con **Aqua Trivy** (`aquasecurity/trivy-action@0.28.0`, `severity: "CRITICAL,HIGH"`, `exit-code: "1"`).
+  - Ejecución automatizada de `vitest`, `pytest` y escaneo SAST/SCA + imágenes Docker con **Aqua Trivy** (`aquasecurity/trivy-action@v0.28.0`, `severity: "CRITICAL,HIGH"`, `exit-code: "1"`).
 
 ---
 

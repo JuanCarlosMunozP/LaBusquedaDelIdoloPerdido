@@ -97,7 +97,7 @@
 ## 7. DevSecOps y Seguridad Cloud (Semana 7)
 
 - [x] **Integración CI/CD (Shift-Left Security):** Workflow [.github/workflows/devsecops.yml](file:///c:/Estudio/Seguridad-Multimedia/.github/workflows/devsecops.yml#L1-L42) que ejecuta `vitest`, `vite build` y `pytest` en cada `push` y `pull_request`.
-- [x] **Análisis Estático y de Dependencias (SAST/SCA con Aqua Trivy):** Escaneo del repositorio (`scan-type: "fs"`, `scanners: "vuln,secret,misconfig"`) y de las imágenes Docker (`idolo-nginx:ci` e `idolo-fastapi:ci`) con `aquasecurity/trivy-action@0.28.0` ([devsecops.yml:44-91](file:///c:/Estudio/Seguridad-Multimedia/.github/workflows/devsecops.yml#L44-L91)).
+- [x] **Análisis Estático y de Dependencias (SAST/SCA con Aqua Trivy):** Escaneo del repositorio (`scan-type: "fs"`, `scanners: "vuln,secret,misconfig"`) y de las imágenes Docker (`idolo-nginx:ci` e `idolo-fastapi:ci`) con `aquasecurity/trivy-action@v0.28.0` ([devsecops.yml:44-91](file:///c:/Estudio/Seguridad-Multimedia/.github/workflows/devsecops.yml#L44-L91)).
 - [x] **Mecanismo de Falla Controlada:** Configurado `severity: "CRITICAL,HIGH"` y `exit-code: "1"` en todos los pasos de Trivy (`TC-ARCH-006`). *(La acreditación en vivo se registra automáticamente en la pestaña GitHub Actions al hacer `git push`).*
 
 ---
