@@ -311,14 +311,22 @@ export const posesHumano = {
     // piernas un poco abiertas, como en una persona tendida
     o.muslo_I[2] = -0.06 * suelta; o.muslo_D[2] = 0.06 * suelta;
     // los brazos cuelgan sueltos junto al cuerpo (nada de brazos levantados al quedar en el suelo)
-    o.hombro_I[0] = o.hombro_D[0] = -0.35 * flexion * (1 - suelta);
+    // La reacción de los brazos tiene un pequeño retraso y un balanceo amortiguado:
+    // primero acompañan el desequilibrio y luego pierden tensión al tocar el suelo.
+    const anticipa = suave(0, 0.18, this.muerteT) * (1 - suave(0.82, 1, this.muerteT));
+    const rebote = Math.sin(this.muerteT * Math.PI * 3.2) * anticipa;
+    const direccion = alFrente ? 1 : deEspaldas ? -1 : lado * 0.45;
+    const retrasoI = Math.max(0, this.muerteT - 0.08);
+    const retrasoD = Math.max(0, this.muerteT - 0.14);
+    o.hombro_I[0] = -0.35 * flexion * (1 - suelta) + direccion * (0.52 * rebote - 0.24 * suelta);
+    o.hombro_D[0] = -0.35 * flexion * (1 - suelta) + direccion * (0.43 * Math.sin(retrasoD * Math.PI * 3.2) * anticipa - 0.18 * suelta);
     // (este bloque reemplaza los valores de arriba, asi que hay que volver a sumar el ajuste del
     // modelo en T: sin el, los brazos quedaban abiertos en el suelo)
     const baja = this.bajarBrazos || 0;
-    o.hombro_I[2] = 0.08 + 0.2 * suelta - baja;
-    o.hombro_D[2] = -0.08 - 0.2 * suelta + baja;
-    o.codo_I[1] = -0.4 * flexion + 0.15 * suelta;
-    o.codo_D[1] = 0.4 * flexion - 0.15 * suelta;
+    o.hombro_I[2] = 0.08 + 0.2 * suelta - baja - 0.2 * lado * rebote;
+    o.hombro_D[2] = -0.08 - 0.2 * suelta + baja + 0.17 * lado * rebote;
+    o.codo_I[1] = -0.4 * flexion + 0.15 * suelta - 0.36 * Math.max(0, Math.sin(retrasoI * Math.PI * 3.2)) * anticipa;
+    o.codo_D[1] = 0.4 * flexion - 0.15 * suelta + 0.3 * Math.max(0, Math.sin(retrasoD * Math.PI * 3.2)) * anticipa;
     if (tipo === "lado") {
       // de lado, el brazo de abajo no puede quedar colgando (levantaria el cuerpo): se
       // dobla hacia el frente y el de arriba queda pegado al costado
