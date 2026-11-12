@@ -12,6 +12,8 @@ RUN npm run build
 # Etapa 2: Gateway Nginx con TLS 1.3, Hardening y Reverse Proxy hacia /api/v1
 FROM nginx:1.27-alpine
 
+# nginx
+
 # apk upgrade aplica los parches de seguridad publicados para la base Alpine
 RUN apk upgrade --no-cache && \
     apk add --no-cache openssl && \
