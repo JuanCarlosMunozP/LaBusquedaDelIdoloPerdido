@@ -12,7 +12,7 @@ RUN groupadd -g 10001 appgroup && \
     useradd -u 10001 -g appgroup -s /usr/sbin/nologin -m appuser
 
 COPY requirements.txt .
-RUN pip install --upgrade pip && pip install -r requirements.txt
+RUN pip install --upgrade pip "setuptools>=78.1.1" && pip install -r requirements.txt
 
 COPY alembic.ini pyproject.toml ./
 COPY alembic ./alembic
