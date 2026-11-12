@@ -2,9 +2,9 @@ name: DevSecOps — CI/CD, SAST/SCA & Container Security (Aqua Trivy)
 
 on:
   push:
-    branches: ["main", "dev/**"]
+    branches: ["main", "dev/**", "dev-*"]
   pull_request:
-    branches: ["main", "dev/**"]
+    branches: ["main", "dev/**", "dev-*"]
 
 permissions:
   contents: read
@@ -60,10 +60,21 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Ejecutar Aqua Trivy en repositorio (Dependencias, Secretos y Docker/Compose)
+<<<<<<< HEAD
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: "fs"
+          scan-ref: "."
+          scanners: "vuln,secret,misconfig"
+          ignore-unfixed: true
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
+=======
         run: |
           docker run --rm -v "$GITHUB_WORKSPACE:/src:ro" -w /src "$TRIVY_IMAGE" \
             fs --scanners vuln,secret,misconfig --ignore-unfixed \
             --severity CRITICAL,HIGH --exit-code 1 .
+>>>>>>> 9dccd699a3d5b6dd12596a559180d2a8d976a2e0
 
   trivy-container-scan:
     name: 3. Escaneo de Imágenes Docker Endurecidas (Aqua Trivy Image)
@@ -77,16 +88,38 @@ jobs:
         run: docker build -f frontend/Dockerfile -t idolo-nginx:ci .
 
       - name: Escanear imagen idolo-nginx:ci con Aqua Trivy (Falla controlada en CRITICAL/HIGH)
+<<<<<<< HEAD
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: "idolo-nginx:ci"
+          format: "table"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
+=======
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY_IMAGE" \
             image --format table --ignore-unfixed --pkg-types os,library \
             --severity CRITICAL,HIGH --exit-code 1 idolo-nginx:ci
+>>>>>>> 9dccd699a3d5b6dd12596a559180d2a8d976a2e0
 
       - name: Construir imagen Docker Backend FastAPI Clean Architecture
         run: docker build -f backend/Dockerfile -t idolo-fastapi:ci ./backend
 
       - name: Escanear imagen idolo-fastapi:ci con Aqua Trivy (Falla controlada en CRITICAL/HIGH)
+<<<<<<< HEAD
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: "idolo-fastapi:ci"
+          format: "table"
+          ignore-unfixed: true
+          vuln-type: "os,library"
+          severity: "CRITICAL,HIGH"
+          exit-code: "1"
+=======
         run: |
           docker run --rm -v /var/run/docker.sock:/var/run/docker.sock "$TRIVY_IMAGE" \
             image --format table --ignore-unfixed --pkg-types os,library \
             --severity CRITICAL,HIGH --exit-code 1 idolo-fastapi:ci
+>>>>>>> 9dccd699a3d5b6dd12596a559180d2a8d976a2e0
