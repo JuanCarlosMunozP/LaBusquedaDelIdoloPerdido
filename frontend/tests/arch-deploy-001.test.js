@@ -155,9 +155,11 @@ describe('ARCH-DEPLOY-001: Verificación de infraestructura Docker, Nginx, Postg
     }
 
     const workflow = leer('.github/workflows/devsecops.yml');
-    expect(workflow).toContain('aquasecurity/trivy-action');
-    expect(workflow).toContain('severity: "CRITICAL,HIGH"');
-    expect(workflow).toContain('exit-code: "1"');
+    // Trivy corre desde su imagen oficial con version fija (sin trivy-action/setup-trivy).
+    expect(workflow).toMatch(/TRIVY_IMAGE:\s*aquasec\/trivy:\d+\.\d+\.\d+/);
+    expect(workflow).not.toContain('aquasecurity/trivy-action');
+    expect(workflow).toContain('--severity CRITICAL,HIGH');
+    expect(workflow).toContain('--exit-code 1');
 
     const cisco = leer('deploy/network/cisco-ios-vlans-aaa-radius.cfg');
     expect(cisco).toContain('vlan 10');
