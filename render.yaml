@@ -1,13 +1,15 @@
-# Blueprint de Render — plan gratuito, un solo contenedor Docker (Nginx + FastAPI).
-#   Internet -> idolo-web (nginx + Basic Auth -> FastAPI en loopback) -> idolo-db (Postgres)
+# Blueprint de Render — plan gratuito, un servicio Docker (Nginx + FastAPI) y PostgreSQL.
+#   Internet -> LaBusquedaDelIdoloPerdido (nginx + Basic Auth -> FastAPI en loopback) -> busquedadelidolodb
+# Se adoptan los recursos ya creados en Render (mismos nombres).
 # Raspberry y VPS siguen usando compose*.yaml y no se ven afectados.
 
 services:
   - type: web
-    name: idolo-web
+    name: LaBusquedaDelIdoloPerdido
     runtime: docker
     region: oregon
     plan: free
+    branch: dev-juan
     dockerfilePath: ./frontend/Dockerfile.render
     dockerContext: ./
     healthCheckPath: /healthz
@@ -20,7 +22,7 @@ services:
         sync: false
       - key: DATABASE_URL
         fromDatabase:
-          name: idolo-db
+          name: busquedadelidolodb
           property: connectionString
       - key: ENVIRONMENT
         value: production
@@ -48,9 +50,7 @@ services:
         value: "10"
 
 databases:
-  - name: idolo-db
-    databaseName: idolo_db
-    user: idolo_user
+  - name: busquedadelidolodb
     region: oregon
     plan: free
     ipAllowList: []
