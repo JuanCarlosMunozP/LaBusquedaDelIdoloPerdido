@@ -2,6 +2,8 @@
 # Uso para Raspberry Pi (ARM64): docker compose -f compose.yaml -f compose.raspberry.yaml up -d --build
 # Uso para VPS (AMD64/ARM64):    docker compose -f compose.yaml -f compose.vps.yaml up -d --build
 
+name: la_busqueda_del_idolo_perdido
+
 services:
   postgres:
     image: postgres:16-alpine
@@ -78,3 +80,5 @@ networks:
 
 volumes:
   pgdata:
+    # Conserva los datos del volumen creado antes de renombrar el proyecto
+    name: proyecto_final_multimediales_seguridad_informatica_pgdata

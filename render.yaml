@@ -1,0 +1,69 @@
+# Blueprint de Render — despliegue por Docker.
+# Arquitectura:
+#   Internet -> [web] idolo-web (nginx + Basic Auth) -> [pserv] fastapi (privado) -> [db] idolo-db
+# Raspberry y VPS siguen usando compose*.yaml; este archivo no los afecta.
+
+services:
+  # Gateway público protegido con usuario y contraseña
+  - type: web
+    name: idolo-web
+    runtime: docker
+    region: oregon
+    plan: free
+    dockerfilePath: ./frontend/Dockerfile.render
+    dockerContext: ./
+    healthCheckPath: /healthz
+    envVars:
+      - key: BASIC_AUTH_USER
+        sync: false
+      - key: BASIC_AUTH_PASSWORD
+        sync: false
+
+  # Backend FastAPI: sin URL pública, solo alcanzable como "fastapi:8000"
+  # desde idolo-web (el nombre del servicio es el hostname interno).
+  - type: pserv
+    name: fastapi
+    runtime: docker
+    region: oregon
+    plan: starter
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEPLOY_TARGET
+        value: render
+      # Pegar manualmente en el dashboard con el prefijo del driver:
+      #   postgresql+psycopg://USER:PASS@HOST:5432/DB
+      # (Render entrega "postgresql://", que el backend no acepta tal cual).
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ADMIN_AUDIT_TOKEN
+        generateValue: true
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: CSRF_PROTECTION_ENABLED
+        value: "true"
+      - key: SESSION_TTL_SECONDS
+        value: "28800"
+      - key: ARGON2_TIME_COST
+        value: "3"
+      - key: ARGON2_MEMORY_COST
+        value: "65536"
+      - key: ARGON2_PARALLELISM
+        value: "2"
+      - key: RATE_LIMIT_PER_MINUTE
+        value: "60"
+      - key: AUTH_RATE_LIMIT_PER_MINUTE
+        value: "10"
+
+databases:
+  - name: idolo-db
+    databaseName: idolo_db
+    user: idolo_user
+    region: oregon
+    plan: free
+    # Sin acceso desde Internet: solo servicios de Render en la misma región
+    ipAllowList: []
