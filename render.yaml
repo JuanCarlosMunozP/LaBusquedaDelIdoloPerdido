@@ -1,10 +1,8 @@
-# Blueprint de Render — despliegue por Docker.
-# Arquitectura:
-#   Internet -> [web] idolo-web (nginx + Basic Auth) -> [pserv] fastapi (privado) -> [db] idolo-db
-# Raspberry y VPS siguen usando compose*.yaml; este archivo no los afecta.
+# Blueprint de Render — plan gratuito, un solo contenedor Docker (Nginx + FastAPI).
+#   Internet -> idolo-web (nginx + Basic Auth -> FastAPI en loopback) -> idolo-db (Postgres)
+# Raspberry y VPS siguen usando compose*.yaml y no se ven afectados.
 
 services:
-  # Gateway público protegido con usuario y contraseña
   - type: web
     name: idolo-web
     runtime: docker
@@ -14,30 +12,20 @@ services:
     dockerContext: ./
     healthCheckPath: /healthz
     envVars:
+      - key: PORT
+        value: "10000"
       - key: BASIC_AUTH_USER
         sync: false
       - key: BASIC_AUTH_PASSWORD
         sync: false
-
-  # Backend FastAPI: sin URL pública, solo alcanzable como "fastapi:8000"
-  # desde idolo-web (el nombre del servicio es el hostname interno).
-  - type: pserv
-    name: fastapi
-    runtime: docker
-    region: oregon
-    plan: starter
-    dockerfilePath: ./backend/Dockerfile
-    dockerContext: ./backend
-    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: idolo-db
+          property: connectionString
       - key: ENVIRONMENT
         value: production
       - key: DEPLOY_TARGET
         value: render
-      # Pegar manualmente en el dashboard con el prefijo del driver:
-      #   postgresql+psycopg://USER:PASS@HOST:5432/DB
-      # (Render entrega "postgresql://", que el backend no acepta tal cual).
-      - key: DATABASE_URL
-        sync: false
       - key: SECRET_KEY
         generateValue: true
       - key: ADMIN_AUDIT_TOKEN
@@ -65,5 +53,4 @@ databases:
     user: idolo_user
     region: oregon
     plan: free
-    # Sin acceso desde Internet: solo servicios de Render en la misma región
     ipAllowList: []

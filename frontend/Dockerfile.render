@@ -1,5 +1,6 @@
-# Imagen del gateway para Render (HTTP plano en :10000 + Basic Auth).
-# Contexto de build: raíz del repositorio (igual que frontend/Dockerfile).
+# Imagen única para Render (plan gratuito): Nginx + FastAPI en el mismo contenedor.
+# Contexto de build: raíz del repositorio.
+# Raspberry y VPS siguen usando frontend/Dockerfile y backend/Dockerfile por separado.
 
 # Etapa 1: Construcción del Frontend 3D (Vite + Three.js)
 FROM node:22-alpine AS frontend-builder
@@ -11,21 +12,42 @@ RUN npm ci --no-audit --no-fund
 COPY frontend/ ./
 RUN npm run build
 
-# Etapa 2: Nginx sin TLS propio (Render termina TLS)
-FROM nginx:1.27-alpine
+# Etapa 2: Python (FastAPI) + Nginx
+FROM python:3.12-slim-bookworm
 
-RUN apk upgrade --no-cache && \
-    apk add --no-cache openssl && \
-    rm -rf /usr/share/nginx/html/* /etc/nginx/conf.d/default.conf && \
-    mkdir -p /var/cache/nginx /var/run/nginx
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends nginx openssl && \
+    apt-get upgrade -y && \
+    rm -rf /var/lib/apt/lists/* /etc/nginx/sites-enabled/* /etc/nginx/conf.d/*
+
+RUN groupadd -g 10001 appgroup && \
+    useradd -u 10001 -g appgroup -s /usr/sbin/nologin -m appuser
+
+WORKDIR /app
+
+COPY backend/requirements.txt .
+RUN pip install --upgrade pip "setuptools>=78.1.1" && \
+    pip install -r requirements.txt && \
+    pip uninstall -y pip setuptools wheel
+
+COPY backend/alembic.ini backend/pyproject.toml ./
+COPY backend/alembic ./alembic
+COPY backend/app ./app
+COPY backend/tests ./tests
 
 COPY --from=frontend-builder /build/dist /usr/share/nginx/html
-COPY deploy/nginx/nginx.render.conf /etc/nginx/nginx.conf
-COPY deploy/nginx/entrypoint-render.sh /docker-entrypoint.d/05-basic-auth.sh
-RUN chmod +x /docker-entrypoint.d/05-basic-auth.sh
+COPY deploy/nginx/nginx.render.conf /app/nginx.render.conf
+COPY deploy/nginx/entrypoint-render.sh /app/entrypoint-render.sh
+COPY deploy/render/start.sh /app/start.sh
+RUN chmod +x /app/entrypoint-render.sh /app/start.sh && \
+    chown -R appuser:appgroup /app
 
-RUN chown -R nginx:nginx /var/cache/nginx /var/run/nginx /var/log/nginx
-
-USER nginx
+USER appuser
 
 EXPOSE 10000
+
+CMD ["/app/start.sh"]
