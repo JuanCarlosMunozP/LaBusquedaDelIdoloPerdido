@@ -3,4 +3,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://labusquedadelidoloperdido-1.onrender.com/sitemap.xml
+Sitemap: https://labusquedadelidoloperdido.onrender.com/sitemap.xml
