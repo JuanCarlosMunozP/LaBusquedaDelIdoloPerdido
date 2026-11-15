@@ -7,9 +7,10 @@ import { g } from './estadoJuego.js';
 import { bloquearRaton } from './escena.js';
 import { vista } from './servicios.js';
 import { pausar } from './ciclo.js';
+import { reiniciarPartida } from './reinicio.js';
 import { atacar } from './combateJugador.js';
 import { hablarSiEstaCerca } from './dialogoDaniel.js';
-import { abrirInventario, cerrarInventario, teclaInventario } from './inventarioJuego.js';
+import { abrirInventario, cerrarInventario, teclaInventario, equiparRanura } from './inventarioJuego.js';
 
 export const teclas = {};
 window.addEventListener("keydown", (e) => {
@@ -18,10 +19,11 @@ window.addEventListener("keydown", (e) => {
   if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(k)) e.preventDefault();
   if (g.estado === "jugando" && (k === "f" || k === "j") && !g.dialogo) atacar();
   if (g.estado === "jugando" && k === "t") hablarSiEstaCerca();           // T: hablar con Daniel
+  if (g.estado === "jugando" && !g.dialogo && !e.repeat && k >= "1" && k <= "9") equiparRanura(Number(k) - 1);   // 1-9: cambiar de objeto
   if (k === "e" && !e.repeat) {                                          // E: inventario (abre y cierra)
     if (g.estado === "inventario") cerrarInventario(); else abrirInventario();
   } else if (g.estado === "inventario") teclaInventario(k);
-  if (k === "r" && (g.estado === "victoria" || g.estado === "derrota")) location.reload();
+  if (k === "r" && (g.estado === "victoria" || g.estado === "derrota")) reiniciarPartida();
 });
 window.addEventListener("keyup", (e) => { teclas[e.key.toLowerCase()] = false; });
 

@@ -23,6 +23,9 @@ const accionesInventario = {
 };
 const panelInventario = crearPanelInventario(inventario, jugador, accionesInventario);
 
+// Teclas 1-9 durante la partida: equipa el objeto de esa ranura sin abrir el inventario.
+export function equiparRanura(i) { accionesInventario.cambiarArma(i); }
+
 export function abrirInventario() {
   if (g.estado !== "jugando" || !jugador.vivo || g.dialogo || g.cambiandoNivel || !g.axel) return;
   g.estado = "inventario";                  // antes de soltar el raton, para que no se tome como una pausa

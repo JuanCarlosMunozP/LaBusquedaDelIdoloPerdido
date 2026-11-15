@@ -18,6 +18,7 @@ import { sonido, partida, inventario, suministros, vista, gltfLoader, objetosSue
 import './juego/controles.js';
 import { danar, soltarObjetosDeMax } from './juego/combateJugador.js';
 import { empezarNivel } from './juego/niveles.js';
+import { reiniciarPartida, leerReinicio } from './juego/reinicio.js';
 import { actualizarJugador } from './juego/jugadorActualizar.js';
 
 // Punto de entrada: arranque (portada, inicio de sesion y carga) y bucle principal.
@@ -46,7 +47,7 @@ hud.boton.addEventListener("click", () => {
       decir("Habla con Daniel (T) para recibir tus misiones.", 5);
     }
   } else if (g.estado === "victoria" || g.estado === "derrota") {
-    location.reload();
+    reiniciarPartida(modoElegido);
   }
 });
 
@@ -94,6 +95,13 @@ async function iniciar() {
   }
   iniciarTutorial(() => g.estado, () => g.nivel);
   g.estado = "inicio";
+  const reinicio = leerReinicio();             // R tras victoria/derrota: sigue con la misma sesion, sin login ni modo
+  if (reinicio) {
+    if (reinicio.invitado) cuenta.entrarComoInvitado();
+    modoElegido = reinicio.modo; g.codigoSala = reinicio.sala;
+    hud.boton.click();
+    return;
+  }
   hud.boton.disabled = false;
   hud.boton.textContent = "Iniciar sesión";
   hud.texto.innerHTML = "<b>Max Montenegro</b> sobrevivió a un naufragio y despierta varado en una isla misteriosa. " +

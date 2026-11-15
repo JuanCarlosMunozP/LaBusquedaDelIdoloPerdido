@@ -110,7 +110,7 @@ export function revisarPortal() {
     const anterior = g.nivel;
     await empezarNivel(anterior + 1);
     if (!jugador.vivo || (typeof esTerminal === "function" ? esTerminal() : (g.estado === "victoria" || g.estado === "derrota")) || g.nivel !== anterior + 1) return;
-    decir(`${NIVELES[g.nivel].nombre}: reÃºne ${IDOLOS_POR_NIVEL} Ã­dolos y cumple los objetivos.`, 6);
+    decir(`${NIVELES[g.nivel].nombre}: reúne ${IDOLOS_POR_NIVEL} ídolos y cumple los objetivos.`, 6);
     fundido.style.opacity = 0;
   }, 700);
 }

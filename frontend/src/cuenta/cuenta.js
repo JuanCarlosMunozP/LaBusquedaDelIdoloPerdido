@@ -22,6 +22,8 @@ export async function entrar(nombre, password) {
   return { ok: true };
 }
 
+export const esInvitado = () => !!actual?.invitado;
+
 export function entrarComoInvitado() {
   actual = { invitado: true };
 }
