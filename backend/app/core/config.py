@@ -53,6 +53,24 @@ class Settings:
     auth_rate_limit_per_minute: int = field(
         default_factory=lambda: int(os.getenv("AUTH_RATE_LIMIT_PER_MINUTE", "10"))
     )
+    # Escrituras de progreso e inventario (PUT): limite por IP y por sesion, por minuto
+    write_rate_limit_per_minute: int = field(
+        default_factory=lambda: int(os.getenv("WRITE_RATE_LIMIT_PER_MINUTE", "30"))
+    )
+    # Cuentas nuevas por IP y hora (frena el registro masivo de cuentas falsas)
+    register_rate_limit_per_hour: int = field(
+        default_factory=lambda: int(os.getenv("REGISTER_RATE_LIMIT_PER_HOUR", "10"))
+    )
+    # Las peticiones que modifican datos solo se aceptan si vienen de la propia web (cabecera Origin)
+    origin_check_enabled: bool = field(
+        default_factory=lambda: os.getenv("ORIGIN_CHECK_ENABLED", "true").lower() == "true"
+    )
+    # Hosts extra permitidos como Origin, separados por comas (p. ej. un dominio propio nuevo)
+    allowed_origin_hosts: tuple[str, ...] = field(
+        default_factory=lambda: tuple(
+            h.strip().lower() for h in os.getenv("ALLOWED_ORIGIN_HOSTS", "").split(",") if h.strip()
+        )
+    )
 
 
 settings = Settings()

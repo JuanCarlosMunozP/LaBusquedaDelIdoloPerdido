@@ -14,7 +14,9 @@ async function esNavegacionPrivada() {
     if (!almacen) return false;
     if (almacen.estimate && /Chrome|Chromium|Edg\//.test(navigator.userAgent)) {   // Chrome y Edge: en privado la cuota es pequena
       const { quota } = await almacen.estimate();
-      const limite = performance.memory?.jsHeapSizeLimit ?? 1073741824;
+      // En Chrome/Edge el modo privado limita la cuota; en uno normal es de decenas de GB (disco).
+      // Umbral: el doble del limite de memoria del navegador (el mismo criterio que usa la libreria detectIncognito).
+      const limite = (performance.memory?.jsHeapSizeLimit ?? 1073741824) * 2;
       return typeof quota === "number" && quota < limite;
     }
     if (/Firefox/.test(navigator.userAgent) && almacen.getDirectory) {              // Firefox: el sistema de archivos privado falla
