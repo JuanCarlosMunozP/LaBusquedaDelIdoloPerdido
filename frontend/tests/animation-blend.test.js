@@ -164,3 +164,132 @@ describe('nado: balanceo, cabeceo y vaivén del cuerpo', () => {
     }
   });
 });
+
+// Fase 3: variedad (reposo, inclinacion al girar, arranque/frenado y aterrizaje).
+const semilla = (n) => () => ((n = (n * 1664525 + 1013904223) % 4294967296) / 4294967296);
+
+function ctxMarcha({ giro = 0, accel = 0, A = 0.8, corre = 0, fase = 0.5 } = {}) {
+  const ctx = crearCtx(2.5);
+  Object.assign(ctx, { giro, accel, A, corre, s: Math.sin(fase), c: Math.cos(fase) });
+  return ctx;
+}
+
+describe('reposo con variantes', () => {
+  const correr = (azar, segundos, onCuadro) => {
+    const humano = { azar };
+    for (let i = 0; i < segundos * 60; i++) {
+      const ctx = crearCtx(0, DT, i * DT);
+      posesHumano.poseReposo.call(humano, ctx);
+      onCuadro(ctx, humano, i);
+    }
+    return humano;
+  };
+
+  it('aparecen las cuatro variantes y ninguna se repite dos veces seguidas', () => {
+    const vistas = [];
+    correr(semilla(7), 240, (_c, h) => {
+      const t = h.varianteReposo.tipo;
+      if (t && vistas[vistas.length - 1] !== t) vistas.push(t);
+    });
+    expect(new Set(vistas)).toEqual(new Set(['peso', 'mirar', 'respiro', 'curioso']));
+    for (let i = 1; i < vistas.length; i++) expect(vistas[i]).not.toBe(vistas[i - 1]);
+  });
+
+  it('es continuo entre cuadros y acotado', () => {
+    let previa = null;
+    correr(semilla(3), 120, (ctx) => {
+      const actual = instantanea(ctx);
+      expect(actual.every(Number.isFinite)).toBe(true);
+      expect(Math.max(...actual.map(Math.abs))).toBeLessThan(1.2);
+      if (previa) expect(saltoMaximo(previa, actual)).toBeLessThan(0.06);
+      previa = actual;
+    });
+  });
+
+  it('al terminar cada variante vuelve a la pose basica', () => {
+    for (const tipo of ['peso', 'mirar', 'respiro', 'curioso']) {
+      const humano = { azar: () => 0.5, varianteReposo: { tipo, t: 0, dur: 2, lado: 1, espera: 0, ultimo: tipo } };
+      let enMedio = 0, ctx;
+      for (let i = 0; i < 4 * 60; i++) {
+        ctx = crearCtx(0, DT, 0);                       // tiempo fijo: aisla la variante de la respiracion
+        posesHumano.poseReposo.call(humano, ctx);
+        if (humano.varianteReposo.tipo === tipo) enMedio = Math.max(enMedio, ...instantanea(ctx).map(Math.abs));
+      }
+      expect(humano.varianteReposo.tipo).toBeNull();      // termino y esta esperando la siguiente
+      const base = crearCtx(0, DT, 0);
+      posesHumano.poseReposo.call({ azar: () => 0.5, varianteReposo: { tipo: null, t: 0, dur: 0, lado: 1, espera: 99, ultimo: null } }, base);
+      expect(saltoMaximo(instantanea(ctx), instantanea(base))).toBeLessThan(1e-9);
+      expect(enMedio).toBeGreaterThan(0.1);                // y durante la variante si se movio
+    }
+  });
+
+  it('las dos opciones de lado producen variantes simetricas', () => {
+    const peso = (lado) => {
+      const h = { varianteReposo: { tipo: 'peso', t: 1.6, dur: 3.2, lado, espera: 0, ultimo: 'peso' } };
+      const ctx = crearCtx(0, 0, 0);
+      posesHumano.poseReposo.call(h, ctx);
+      return ctx.o;
+    };
+    const d = peso(1), i = peso(-1);
+    expect(d.torso[2]).toBeGreaterThan(0.05);
+    expect(i.torso[2]).toBeLessThan(-0.05);
+    expect(d.rodilla_I[0]).toBeGreaterThan(0.2);     // lado +1: apoya la derecha, relaja la izquierda
+    expect(i.rodilla_D[0]).toBeGreaterThan(0.2);
+  });
+});
+
+describe('inclinacion al girar y al arrancar o frenar', () => {
+  const marcha = (opc) => { const ctx = ctxMarcha(opc); posesHumano.poseCaminar.call({}, ctx); return ctx.o; };
+
+  it('sin giro ni aceleracion no se inclina de mas', () => {
+    const a = marcha({}), b = marcha({ giro: 0, accel: 0 });
+    expect(b.torso[2]).toBeCloseTo(a.torso[2], 12);
+    expect(Math.abs(a.torso[2])).toBeLessThan(1e-9);
+  });
+
+  it('girar a la izquierda (giro > 0) inclina el torso a la izquierda, y a la derecha lo contrario', () => {
+    expect(marcha({ giro: 4 }).torso[2]).toBeLessThan(-0.05);   // -Z = izquierda del personaje
+    expect(marcha({ giro: -4 }).torso[2]).toBeGreaterThan(0.05);
+  });
+
+  it('la cabeza compensa en sentido contrario al torso', () => {
+    const o = marcha({ giro: 4 });
+    expect(Math.sign(o.cabeza[2])).toBe(-Math.sign(o.torso[2]));
+    expect(Math.abs(o.cabeza[2])).toBeLessThan(Math.abs(o.torso[2]));
+  });
+
+  it('acelerar echa el torso adelante y frenar lo echa atras', () => {
+    const base = marcha({}).torso[0];
+    expect(marcha({ accel: 8 }).torso[0]).toBeGreaterThan(base + 0.05);
+    expect(marcha({ accel: -8 }).torso[0]).toBeLessThan(base - 0.05);
+  });
+
+  it('esta acotada aunque el giro o la aceleracion sean exagerados', () => {
+    const o = marcha({ giro: 999, accel: 999 }), base = marcha({});
+    expect(Math.abs(o.torso[2])).toBeLessThanOrEqual(0.2);
+    expect(o.torso[0] - base.torso[0]).toBeLessThanOrEqual(0.121);
+  });
+
+  it('casi sin velocidad (A pequena) apenas se inclina', () => {
+    expect(Math.abs(marcha({ giro: 8, A: 0.06 }).torso[2])).toBeLessThan(0.01);
+  });
+});
+
+describe('aterrizaje segun la caida', () => {
+  const rodilla = (fuerza) => {
+    const ctx = crearCtx(0, DT);
+    posesHumano.ajusteAterrizaje.call({ impactoAterrizaje: 0.18, fuerzaAterrizaje: fuerza }, ctx);
+    return ctx.o.rodilla_I[0];
+  };
+
+  it('una caida mas fuerte flexiona mas las rodillas', () => {
+    expect(rodilla(1.6)).toBeGreaterThan(rodilla(1));
+    expect(rodilla(1)).toBeGreaterThan(rodilla(0.5));
+  });
+
+  it('sin dato de fuerza se comporta como antes (1)', () => {
+    const ctx = crearCtx(0, DT);
+    posesHumano.ajusteAterrizaje.call({ impactoAterrizaje: 0.18 }, ctx);
+    expect(ctx.o.rodilla_I[0]).toBeCloseTo(rodilla(1), 12);
+  });
+});

@@ -8,6 +8,14 @@ import { suave } from './ayudas.js';
 import { ARTICULACIONES, DURACION_GOLPE } from './constantes.js';
 import { avanzarFase } from './mezcla.js';
 
+// Variantes del reposo (duracion en segundos)
+const VARIANTES_REPOSO = [
+  { tipo: "peso", dur: 3.2 },
+  { tipo: "mirar", dur: 3.6 },
+  { tipo: "respiro", dur: 2.4 },
+  { tipo: "curioso", dur: 2.6 }
+];
+
 export const posesHumano = {
   // Braza en el estanque del oasis.
   poseNadoOasis(ctx) {
@@ -127,12 +135,22 @@ export const posesHumano = {
     o.torso[0] = 0.05 + 0.07 * A + 0.17 * corre;   // al correr se inclina hacia adelante
     o.cabeza[1] = s * 0.12 * A;
     o.cabeza[0] = -0.12 * corre;
+    // Inclinacion al girar y al arrancar/frenar (ejes: +Z = inclinarse a la derecha del personaje,
+    // +X de torso = hacia adelante). giro > 0 = gira a su izquierda, asi que se inclina hacia ella
+    // (negativo). Acelerar lo echa hacia adelante; frenar, hacia atras.
+    const presencia = Math.min(A, 1);
+    const ladeo = -THREE.MathUtils.clamp((ctx.giro || 0) * 0.04, -0.2, 0.2) * presencia * (0.6 + 0.4 * corre);
+    o.torso[2] += ladeo;
+    o.cabeza[2] -= 0.6 * ladeo;                  // la cabeza compensa y se mantiene casi nivelada
+    o.cadera[2] -= 0.4 * ladeo;
+    o.torso[0] += THREE.MathUtils.clamp((ctx.accel || 0) * 0.012, -0.12, 0.12) * presencia;
     ctx.bob = Math.abs(c) * (0.05 * A + 0.04 * corre);
   },
 
-  // Quieto: respira y mira un poco a los lados.
+  // Quieto: respira, mira un poco a los lados y, de vez en cuando, hace algo distinto (cambia el
+  // peso de pierna, mira alrededor, respira hondo, ladea la cabeza) para no verse congelado.
   poseReposo(ctx) {
-    const { tiempo, o } = ctx;
+    const { dt, tiempo, o } = ctx;
     // reposo: respira y mira un poco a los lados
     o.torso[0] = Math.sin(tiempo * 1.8) * 0.012;
     o.hombro_I[2] = -0.04 + Math.sin(tiempo * 1.8) * 0.01;
@@ -140,12 +158,60 @@ export const posesHumano = {
     o.codo_I[1] = -0.18;
     o.codo_D[1] = 0.18;
     o.cabeza[1] = Math.sin(tiempo * 0.5) * 0.18;
+
+    // variante ocasional: espera unos segundos quieto, la hace de principio a fin y vuelve a esperar
+    const azar = this.azar || Math.random;
+    const v = this.varianteReposo || (this.varianteReposo = { tipo: null, t: 0, dur: 0, lado: 1, espera: 2 + azar() * 4, ultimo: null });
+    if (v.tipo === null) {
+      v.espera -= dt;
+      if (v.espera <= 0) {
+        const tipos = VARIANTES_REPOSO.filter((x) => x.tipo !== v.ultimo);   // no repite la misma dos veces seguidas
+        const elegida = tipos[Math.min(tipos.length - 1, Math.floor(azar() * tipos.length))];
+        v.tipo = elegida.tipo; v.dur = elegida.dur; v.t = 0; v.ultimo = elegida.tipo;
+        v.lado = azar() < 0.5 ? -1 : 1;
+      }
+    } else {
+      v.t += dt;
+      if (v.t >= v.dur) { v.tipo = null; v.espera = 4 + azar() * 6; }
+    }
+    if (v.tipo !== null) {
+      const x = Math.min(v.t / v.dur, 1);
+      const s = Math.sin(Math.PI * x);
+      const w = s * s;                                  // entra y sale con pendiente cero, sin tirones
+      const lado = v.lado;
+      if (v.tipo === "peso") {
+        // se apoya en una pierna: el torso se carga sobre ella (+Z = derecha) y la otra se relaja
+        const libre = lado > 0 ? "I" : "D";
+        o.torso[2] += lado * 0.07 * w;
+        o.cadera[2] += -lado * 0.05 * w;
+        o.cabeza[2] += -lado * 0.04 * w;
+        o["muslo_" + libre][0] += -0.12 * w;
+        o["rodilla_" + libre][0] += 0.3 * w;
+      } else if (v.tipo === "mirar") {
+        // mira a un lado, luego al otro, girando un poco el torso
+        const barrido = Math.sin(2 * Math.PI * x) * w;
+        o.cabeza[1] += lado * 0.7 * barrido;
+        o.torso[1] += lado * 0.22 * barrido;
+      } else if (v.tipo === "respiro") {
+        // respira hondo: pecho y cabeza se abren y los brazos se separan un poco del cuerpo
+        o.torso[0] += -0.06 * w;
+        o.cabeza[0] += -0.05 * w;
+        o.hombro_I[2] += 0.07 * w;
+        o.hombro_D[2] += -0.07 * w;
+      } else if (v.tipo === "curioso") {
+        // ladea la cabeza, como si algo le llamara la atencion
+        o.cabeza[2] += lado * 0.2 * w;
+        o.cabeza[0] += -0.05 * w;
+        o.torso[2] += lado * 0.02 * w;
+      }
+    }
   },
 
   // Amortigua el impacto al tocar el suelo.
   ajusteAterrizaje(ctx) {
     const { dt, o } = ctx;
-    const intensidad = this.impactoAterrizaje / 0.18;
+    // la fuerza depende de la caida (un salto normal vale 1; desde mas alto, hasta 1.6)
+    const intensidad = (this.impactoAterrizaje / 0.18) * (this.fuerzaAterrizaje ?? 1);
     this.impactoAterrizaje = Math.max(0, this.impactoAterrizaje - dt);
     o.muslo_I[0] -= 0.12 * intensidad;
     o.muslo_D[0] -= 0.12 * intensidad;

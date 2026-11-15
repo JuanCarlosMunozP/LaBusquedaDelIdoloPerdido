@@ -308,9 +308,28 @@ export class Humano {
     ctx.roll = 0;       // balanceo del cuerpo entero al nadar (rad)
     ctx.cabeceo = 0;    // inclinacion extra del cuerpo al nadar (rad, negativo = mas vertical)
     this.actualizarParpadeo(dt);
-    if (!enSuelo) this.impactoAterrizaje = 0;
-    else if (!this.enSueloAnterior) this.impactoAterrizaje = 0.18;
+    if (!enSuelo) {
+      this.impactoAterrizaje = 0;
+      this.vyAire = velocidadVertical;       // se guarda para medir la fuerza del aterrizaje
+    } else if (!this.enSueloAnterior) {
+      this.impactoAterrizaje = 0.18;
+      this.fuerzaAterrizaje = THREE.MathUtils.clamp(-(this.vyAire || 0) / 7.2, 0.5, 1.6);
+    }
     this.enSueloAnterior = enSuelo;
+
+    // Velocidad de giro (rad/s) y aceleracion (m/s2), suavizadas: de ellas salen la inclinacion al
+    // girar y el balanceo al arrancar o frenar. Si el personaje no avanza, valen ~0.
+    if (dt > 0) {
+      let dd = this.direccion - (this.direccionPrevia ?? this.direccion);
+      dd = Math.atan2(Math.sin(dd), Math.cos(dd));
+      const ks = Math.min(1, dt * 8);
+      this.giroSuave = amortiguar(this.giroSuave || 0, dd / dt, ks);
+      this.accelSuave = amortiguar(this.accelSuave || 0, (velocidad - (this.velocidadPrevia ?? velocidad)) / dt, Math.min(1, dt * 6));
+    }
+    this.direccionPrevia = this.direccion;
+    this.velocidadPrevia = velocidad;
+    ctx.giro = THREE.MathUtils.clamp(this.giroSuave || 0, -8, 8);
+    ctx.accel = THREE.MathUtils.clamp(this.accelSuave || 0, -15, 15);
 
     this.fase += dt * velocidad * 2;
     ctx.s = Math.sin(this.fase);
