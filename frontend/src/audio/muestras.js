@@ -5,6 +5,7 @@
 // Los *-lite son versiones livianas (mono, 22 kHz) de los originales.
 export const MUESTRAS_AGUA = {
   mar: "sounds/oceano-lite.wav",
+  fuego: "sounds/fuego-lite.wav",
   golpes: "sounds/aire-lite.wav",
   nadar: "sounds/nada-lite.wav"
 };
@@ -52,6 +53,10 @@ export const efectosMuestras = {
 
   conectarMuestrasAgua() {
     const m = this.muestras || {};
+    if (m.fuego && this.fuego) {      // fogata real: sigue el volumen por distancia de this.fuego; el crepitar sintetico casi calla
+      this.bucleMuestra(m.fuego, this.fuego, 1);
+      this.fuegoSint?.gain.setTargetAtTime(0.08, this.ctx.currentTime, 0.5);
+    }
     if (m.mar && this.mar) {
       this.bucleMuestra(m.mar, this.mar, 0.9);
       this.gOceanoSint?.gain.setTargetAtTime(0.04, this.ctx.currentTime, 0.5);

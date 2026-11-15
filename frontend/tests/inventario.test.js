@@ -185,3 +185,19 @@ describe('inventario: guardado en la cuenta (servidor)', () => {
     expect(JSON.parse(m.d['idolo.inventario.v1'])).toEqual({ sombrero: 'guardado' });
   });
 });
+
+describe('guardar el sombrero antes de la cinematica', () => {
+  it('se puede guardar aunque aun lo lleve en la mano, no reaparece solo y se recuerda al recargar', () => {
+    const memoria = new Map();
+    const storage = { getItem: (k) => memoria.get(k) ?? null, setItem: (k, v) => memoria.set(k, v) };
+    const inv = crearInventario(storage);
+    expect(inv.modoSombrero({ tiene: false, permitido: true })).toBe('mano');
+    inv.fijarSombrero('guardado');
+    expect(inv.modoSombrero({ tiene: false, permitido: true })).toBe('oculto');
+    expect(inv.modoSombrero({ tiene: true, permitido: true })).toBe('oculto');     // tras la cinematica sigue guardado
+    expect(crearInventario(storage).modoSombrero({ tiene: false, permitido: true })).toBe('oculto');
+    inv.fijarSombrero('puesto');
+    expect(inv.modoSombrero({ tiene: false, permitido: true })).toBe('mano');
+    expect(inv.modoSombrero({ tiene: true, permitido: true })).toBe('cabeza');
+  });
+});

@@ -10,4 +10,5 @@ frontend/dist/
 frontend/public/sounds/ocean.wav
 frontend/public/sounds/aire.wav
 frontend/public/sounds/nada.wav
+frontend/public/sounds/fire-cracking.wav
 .env.render

@@ -38,12 +38,12 @@ export function crearPanelInventario(inventario, jugador, acciones) {
     // ---- sombrero
     const puesto = inventario.sombrero === "puesto";
     const fila = el("section", { className: "inv-seccion" }, [el("h3", { textContent: "Sombrero" })]);
-    if (!tieneSombrero) {
-      fila.append(el("p", { className: "inv-nota", textContent: "Aún lo llevas en la mano." }));
-    } else {
+    // antes de la cinematica lo lleva en la mano: tambien se puede guardar (y se recuerda)
+    {
+      const donde = tieneSombrero ? "Puesto en la cabeza." : "Lo llevas en la mano.";
       fila.append(
-        el("p", { className: "inv-nota", textContent: puesto ? "Puesto en la cabeza." : "Guardado en la mochila." }),
-        boton(puesto ? "Quitarse y guardar el sombrero" : "Ponerse el sombrero", acciones.sombrero, { tecla: "H" })
+        el("p", { className: "inv-nota", textContent: puesto ? donde : "Guardado en la mochila." }),
+        boton(puesto ? "Guardar el sombrero" : tieneSombrero ? "Ponerse el sombrero" : "Sacar el sombrero", acciones.sombrero, { tecla: "H" })
       );
       if (!sombreroPermitido) fila.append(el("p", { className: "inv-nota", textContent: "Aquí no se usa: se verá al salir." }));
     }

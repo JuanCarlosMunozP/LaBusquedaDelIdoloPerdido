@@ -128,12 +128,12 @@ export function crearInventario(storage = almacen()) {
     alternarSombrero() { return this.fijarSombrero(sombrero === "puesto" ? "guardado" : "puesto"); },
 
     // Que muestra el modelo. Regla unica y sin efectos secundarios:
-    //   sin sombrero aun (antes de la cinematica) -> en la mano | nivel sin sombrero -> oculto
-    //   guardado -> oculto (NUNCA reaparece solo) | puesto -> cabeza (el modelo lo pasa a la mano al nadar)
+    //   guardado -> oculto (NUNCA reaparece solo) | nivel sin sombrero -> oculto
+    //   sin sombrero aun (antes de la cinematica) -> en la mano | puesto -> cabeza (el modelo lo pasa a la mano al nadar)
     modoSombrero({ tiene, permitido }) {
       if (!permitido) return "oculto";
-      if (!tiene) return "mano";
-      return sombrero === "guardado" ? "oculto" : "cabeza";
+      if (sombrero === "guardado") return "oculto";   // tambien antes de la cinematica: se puede guardar en la mano
+      return tiene ? "cabeza" : "mano";
     }
   };
 }

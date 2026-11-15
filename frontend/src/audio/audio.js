@@ -201,6 +201,8 @@ export class Sonido {
     this.fuego.gain.value = 0;
     this.fuego.connect(this.maestro);
     this.volFuego = 0;
+    this.fuegoSint = ctx.createGain();       // el fuego sintetizado (respaldo); baja cuando llega la grabacion real
+    this.fuegoSint.connect(this.fuego);
 
     // ruido blanco para los chasquidos y el siseo (el ruido marron del resto es demasiado grave)
 
@@ -212,7 +214,7 @@ export class Sonido {
     fr.Q.value = 0.6;
     const gr = ctx.createGain();
     gr.gain.value = 0.9;
-    rugido.connect(fr).connect(gr).connect(this.fuego);
+    rugido.connect(fr).connect(gr).connect(this.fuegoSint);
     rugido.start();
     setInterval(() => {
       if (this.volFuego > 0.02) gr.gain.setTargetAtTime(0.6 + Math.random() * 0.7, ctx.currentTime, 0.25);
@@ -226,7 +228,7 @@ export class Sonido {
     fs.Q.value = 0.5;
     const gs = ctx.createGain();
     gs.gain.value = 0.035;
-    siseo.connect(fs).connect(gs).connect(this.fuego);
+    siseo.connect(fs).connect(gs).connect(this.fuegoSint);
     siseo.start();
 
     // crepitar: intervalos al azar; si el fuego queda lejos no se sintetiza nada
@@ -255,7 +257,7 @@ export class Sonido {
     const largo = 0.012 + Math.random() * 0.03;
     g.gain.setValueAtTime(fuerza * 2.2, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + largo);
-    src.connect(f).connect(g).connect(this.fuego);
+    src.connect(f).connect(g).connect(this.fuegoSint);
     src.start(t, Math.random() * 1.5, largo + 0.02);
   }
 
@@ -272,7 +274,7 @@ export class Sonido {
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.5, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
-    o.connect(g).connect(this.fuego);
+    o.connect(g).connect(this.fuegoSint);
     o.start(t);
     o.stop(t + 0.14);
   }

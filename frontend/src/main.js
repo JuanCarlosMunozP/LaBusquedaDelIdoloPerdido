@@ -199,7 +199,7 @@ function cerrarInventario() {
 
 function teclaInventario(k) {
   if (k === "escape") cerrarInventario();
-  else if (k === "h" && datosInventario().tieneSombrero) accionesInventario.sombrero();
+  else if (k === "h") accionesInventario.sombrero();
   else if (k === "g") accionesInventario.guardarArma();
   else if (k >= "1" && k <= "9") accionesInventario.cambiarArma(Number(k) - 1);
 }
