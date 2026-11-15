@@ -3,7 +3,7 @@
 // dibujan en el mapa, se animan y se avisa al servidor cuando Max llega hasta uno. No duran entre
 // partidas: cada nivel abre una carrera nueva (reiniciar). Sin servidor no aparece ninguno.
 import { crearModeloBotiquin, crearModeloKitArma } from '../escenario/botiquines.js';
-import { ARMAS, equiparArma } from '../personajes/armas.js';
+import { ARMAS, BALAS_POR_CARGADOR, equiparArma } from '../personajes/armas.js';
 import { decir } from '../interfaz/hud.js';
 import { reglas } from './reglas.js';
 import { crearSincronizador, elegirPosicion } from './sincronizadorSuministros.js';
@@ -25,8 +25,9 @@ export function crearSuministros({ scene, sonido, jugador, inventario, sincroniz
   const pintarPanel = () => {
     panel.style.display = jugador.arma ? "block" : "none";
     if (jugador.arma) {
+      const enCargador = Math.min(jugador.cargador ?? BALAS_POR_CARGADOR, jugador.municion);
       panel.textContent = jugador.arma.tipo === "pistola"
-        ? `Arma: ${jugador.arma.id} · ${jugador.municion} balas` : `Arma: ${jugador.arma.id}`;
+        ? `Arma: ${jugador.arma.id} · ${enCargador} / ${jugador.municion - enCargador} balas` : `Arma: ${jugador.arma.id}`;
     }
   };
 
@@ -71,6 +72,8 @@ export function crearSuministros({ scene, sonido, jugador, inventario, sincroniz
   // Muestra en la mano de Max el arma que dice `jugador` (tras recoger, cambiar o guardar desde el inventario)
   function sincronizarArma(axel) {
     const arma = jugador.arma;
+    jugador.cargador = null;                                 // arma nueva: cargador lleno
+    axel.recarga = 0;
     equiparArma(axel, arma ?? { crear: null });
     axel.apuntando = arma?.tipo === "pistola" ? 1 : 0;     // con pistola lleva el brazo extendido
     pintarPanel();
@@ -91,6 +94,8 @@ export function crearSuministros({ scene, sonido, jugador, inventario, sincroniz
     if (axel) { equiparArma(axel, { crear: null }); axel.apuntando = 0; }
     jugador.arma = null;
     jugador.municion = 0;
+    jugador.cargador = null;
+    if (axel) axel.recarga = 0;
     pintarPanel();
   }
 
@@ -139,5 +144,5 @@ export function crearSuministros({ scene, sonido, jugador, inventario, sincroniz
     }
   }
 
-  return { actualizar, reiniciar, gastarBala, quitarArma, sincronizarArma };
+  return { actualizar, reiniciar, gastarBala, quitarArma, sincronizarArma, refrescarPanel: pintarPanel };
 }

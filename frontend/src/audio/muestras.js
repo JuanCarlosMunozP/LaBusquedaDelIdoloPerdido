@@ -7,7 +7,19 @@ export const MUESTRAS_AGUA = {
   mar: "sounds/oceano-lite.wav",
   fuego: "sounds/fuego-lite.wav",
   golpes: "sounds/aire-lite.wav",
-  nadar: "sounds/nada-lite.wav"
+  nadar: "sounds/nada-lite.wav",
+  oasis: "sounds/oasis-lite.wav",         // estanque del oasis (bucle, segun la cercania al agua)
+  desierto: "sounds/desierto-lite.wav",   // viento del desierto (bucle, solo en ese nivel)
+  disparo: "sounds/shot.wav"              // disparo (0 - 0.56 s) y, despues, los clics de la recarga
+};
+
+// Trozos de shot.wav (segundos): el disparo y los tres momentos de la recarga (cargador que sale,
+// cargador nuevo que entra y corredera). Los cortes caen en silencios del archivo.
+export const TROZOS_ARMA = {
+  disparo: [0, 0.56],
+  cargadorFuera: [0.56, 0.9],
+  cargadorDentro: [0.9, 1.2],
+  corredera: [1.2, 1.53]
 };
 
 // Descarga y decodifica una muestra. Devuelve null si algo falla (nunca lanza).
@@ -57,10 +69,47 @@ export const efectosMuestras = {
       this.bucleMuestra(m.fuego, this.fuego, 1);
       this.fuegoSint?.gain.setTargetAtTime(0.08, this.ctx.currentTime, 0.5);
     }
+    if (m.oasis && this.oasis) {      // oasis real: el volumen lo da this.oasis (ajustarAgua); el murmullo sintetico se calla
+      this.bucleMuestra(m.oasis, this.oasis, 0.4);
+      this.gOasisSint?.gain.setTargetAtTime(0.05, this.ctx.currentTime, 0.5);
+    }
+    if (m.desierto) {                 // viento del desierto: canal propio, se abre solo en el nivel del desierto
+      this.desierto = this.ctx.createGain();
+      this.desierto.gain.value = 0;
+      this.desierto.connect(this.maestro);
+      this.bucleMuestra(m.desierto, this.desierto, 0.9);
+      this.ajustarAmbiente(this.nivelAmbiente);
+    }
     if (m.mar && this.mar) {
       this.bucleMuestra(m.mar, this.mar, 0.9);
       this.gOceanoSint?.gain.setTargetAtTime(0.04, this.ctx.currentTime, 0.5);
     }
+  },
+
+  // Ambiente del nivel actual ("desierto" u otro): el viento del desierto solo suena alli
+  ajustarAmbiente(tipo) {
+    this.nivelAmbiente = tipo;
+    if (this.desierto) this.desierto.gain.setTargetAtTime(tipo === "desierto" ? 0.55 : 0, this.ctx.currentTime, 0.6);
+  },
+
+  // Un trozo fijo de una muestra ([inicio, fin] en segundos), con fundidos cortos. `retraso` en segundos.
+  // Devuelve false si la muestra no llego (quien llama usa el sonido sintetizado).
+  trozoFijo(clave, [inicio, fin], { vol = 1, retraso = 0, vel = 1 } = {}) {
+    const buffer = this.muestras?.[clave];
+    if (!this.ctx || !buffer) return false;
+    const d = (fin - inicio) / vel, t = this.ctx.currentTime + retraso;
+    const s = this.ctx.createBufferSource();
+    s.buffer = buffer;
+    s.playbackRate.value = vel;
+    const g = this.ctx.createGain();
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.004);
+    g.gain.setValueAtTime(vol, t + d - 0.02);
+    g.gain.linearRampToValueAtTime(0.0001, t + d);
+    s.connect(g);
+    this.salida(g, 0.1);
+    s.start(t, inicio, fin - inicio);
+    return true;
   },
 
   // Un trozo corto de una muestra, con entrada y salida suaves para que no haya clics

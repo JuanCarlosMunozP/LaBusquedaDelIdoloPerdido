@@ -100,6 +100,7 @@ export class Humano {
     this.fase = 0;
     this.pesosBase = crearPesos();   // peso de cada pose base (ver mezcla.js)
     this.golpeT = -1;       // progreso del golpe (0..1), -1 = sin golpear
+    this.recarga = 0;       // progreso de la recarga de la pistola (0..1), 0 = sin recargar (lo avanza quien lo controla)
     this.brazoGolpe = "D";
     this.enSueloAnterior = true;
     this.impactoAterrizaje = 0;
@@ -258,6 +259,7 @@ export class Humano {
     if (this.remando > 0) this.#calcularPose(ctx, posesHumano.poseRemar);
     if (this.impactoAterrizaje > 0) this.#calcularPose(ctx, posesHumano.ajusteAterrizaje);
     if ((this.apuntando || 0) > 0.01) this.#calcularPose(ctx, posesHumano.poseApuntar);
+    if (this.recarga > 0) this.#calcularPose(ctx, posesHumano.poseRecargar);
     if (this.golpeT >= 0) this.#calcularPose(ctx, posesHumano[POSE_DE_GOLPE[this.estiloGolpe] ?? "poseGolpe"]);
     if (this.destelloT > 0) this.#calcularPose(ctx, posesHumano.poseDestello);
     if (this.herida) this.#calcularPose(ctx, posesHumano.poseHerida);

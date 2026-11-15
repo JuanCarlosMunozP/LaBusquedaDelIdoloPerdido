@@ -7,6 +7,7 @@ import { g } from './estadoJuego.js';
 import { bloquearRaton } from './escena.js';
 import { vista } from './servicios.js';
 import { pausar } from './ciclo.js';
+import { iniciarRecarga } from './recarga.js';
 import { reiniciarPartida } from './reinicio.js';
 import { atacar } from './combateJugador.js';
 import { hablarSiEstaCerca } from './dialogoDaniel.js';
@@ -18,6 +19,7 @@ window.addEventListener("keydown", (e) => {
   teclas[k] = true;
   if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(k)) e.preventDefault();
   if (g.estado === "jugando" && (k === "f" || k === "j") && !g.dialogo) atacar();
+  if (g.estado === "jugando" && k === "r" && !e.repeat && !g.dialogo) iniciarRecarga();   // R: recargar la pistola
   if (g.estado === "jugando" && k === "t") hablarSiEstaCerca();           // T: hablar con Daniel
   if (g.estado === "jugando" && !g.dialogo && !e.repeat && k >= "1" && k <= "9") equiparRanura(Number(k) - 1);   // 1-9: cambiar de objeto
   if (k === "e" && !e.repeat) {                                          // E: inventario (abre y cierra)

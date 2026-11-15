@@ -82,8 +82,14 @@ function animar() {
     if (pose === "golpear" && fijo) { h.congelarGolpe = +fijo.split("=")[1]; if (h.golpeT < 0) h.golpear(); }
     else if (pose === "golpear" && h.golpeT < 0) h.golpear();
     if (pose === "morir" && !h.muerto) h.morir();   // cada vez cae distinto (atras, adelante o de lado)
-    h.apuntando = pose === "apuntar" ? 1 : 0;
-    h.actualizar(dt, v, enSuelo, t, velocidadVertical, pose === "nadar");
+    h.apuntando = pose === "apuntar" || pose === "recargar" ? 1 : 0;
+    if (h === enemigo) h.grupo.visible = pose !== "recargar";
+    if (pose === "recargar") {      // pistola en ambos y la recarga en bucle (o fija con &p=0.4)
+      if (!h.armaMalla) equiparArma(h, ARMAS.pistola);
+      h.recarga = fijo ? Math.max(0.001, +fijo.split("=")[1]) : Math.max(0.001, (t % 2.2) / 1.7 % 1.2);
+      if (h.recarga > 1) h.recarga = 0;
+    } else h.recarga = 0;
+    h.actualizar(dt, v, enSuelo, t, velocidadVertical, pose === "nadar", pose === "recargar" ? "cabeza" : "mano");
   }
 
   const foco = vista === "cara" || vista === "perfil" ? new THREE.Vector3(-0.7, 1.65, 0)

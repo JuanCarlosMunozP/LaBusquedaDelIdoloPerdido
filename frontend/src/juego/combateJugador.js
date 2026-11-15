@@ -6,6 +6,7 @@ import { g, jugador, enemigos, obj } from './estadoJuego.js';
 import { scene } from './escena.js';
 import { sonido, vista, suministros, inventario, objetosSueltos } from './servicios.js';
 import { matarJugador } from './ciclo.js';
+import { balasEnCargador, iniciarRecarga, recargando } from './recarga.js';
 
 // Sin arma, cada F encadena un combo: punos por ambos brazos, gancho, patada, uppercut y patada giratoria.
 const COMBO = ["directo", "directo", "gancho", "patada", "directo", "uppercut", "giratoria"];
@@ -14,9 +15,13 @@ let pasoCombo = 0;
 export function atacar() {
   if (!jugador.vivo || jugador.golpeCooldown > 0 || jugador.nadando) return;
   if (jugador.arma?.tipo === "pistola") {      // con pistola dispara en vez de golpear
+    if (recargando()) return;                    // no dispara mientras recarga
+    if (balasEnCargador() <= 0) { if (!iniciarRecarga()) sonido.sinBalas(); return; }
     jugador.golpeCooldown = 0.35;
     dispararJugador({ axel: g.axel, jugador, enemigos, sonido, vista, obj, scene, mundo: g.mundo });
+    jugador.cargador--;
     suministros.gastarBala(g.axel);
+    if (jugador.arma && jugador.cargador <= 0) iniciarRecarga();   // cargador vacio: recarga sola si hay reserva
     return;
   }
   if (jugador.arma) g.axel.brazoGolpe = "I";     // golpea con la mano derecha, donde lleva el arma

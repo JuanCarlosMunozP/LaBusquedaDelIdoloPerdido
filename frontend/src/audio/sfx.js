@@ -5,6 +5,8 @@
 //
 // Todo se programa con el reloj de audio (no con setTimeout), para que los tiempos sean exactos.
 // Ojo: exponentialRampToValueAtTime falla en el navegador con valores <= 0, por eso se usa PISO.
+import { TROZOS_ARMA } from './muestras.js';
+
 const PISO = 0.0001;
 const azar = (a, b) => a + Math.random() * (b - a);
 
@@ -251,11 +253,36 @@ export const efectosSfx = {
   // Disparo de pistola: chasquido seco, estallido, retumbo grave y eco
   disparo() {
     if (!this.ctx) return;
+    if (this.trozoFijo("disparo", TROZOS_ARMA.disparo, { vol: 0.9, vel: azar(0.97, 1.03) })) return;   // sonido real
     const v = azar(0.92, 1.08);
     this.ruidoFiltrado({ buffer: this.ruidoBlanco, tipo: "highpass", f0: 1100, dur: 0.07, vol: 0.9 * v, ataque: 0.001, reverb: 0.4 });   // el chasquido
     this.ruidoFiltrado({ buffer: this.ruidoBlanco, tipo: "lowpass", f0: 5000, f1: 380, dur: 0.24, vol: 0.75 * v, ataque: 0.002, reverb: 0.5 });
     this.barrido({ f0: 150 * v, f1: 40, dur: 0.3, vol: 0.65, tipo: "sine", reverb: 0.3 });
     this.ruidoFiltrado({ tipo: "bandpass", f0: 4200, q: 3, dur: 0.018, vol: 0.1, retraso: 0.07 });   // el mecanismo
+  },
+
+  // Recargar la pistola: cargador que sale, clic del cargador nuevo y la corredera. `dur` = segundos de la
+  // animacion (los sonidos caen en los mismos instantes que la pose: 0.34, 0.8 y 0.9 de la duracion)
+  recargar(dur = 1.7) {
+    if (!this.ctx) return;
+    if (this.muestras?.disparo) {       // sonido real: cada trozo cae en su momento de la animacion
+      this.trozoFijo("disparo", TROZOS_ARMA.cargadorFuera, { vol: 0.8, retraso: 0.28 * dur });
+      this.trozoFijo("disparo", TROZOS_ARMA.cargadorDentro, { vol: 0.9, retraso: 0.76 * dur });
+      this.trozoFijo("disparo", TROZOS_ARMA.corredera, { vol: 0.9, retraso: 0.88 * dur });
+      return;
+    }
+    this.ruidoFiltrado({ tipo: "bandpass", f0: 2600, q: 4, dur: 0.04, vol: 0.2, ataque: 0.001, retraso: 0.34 * dur });
+    this.ruidoFiltrado({ tipo: "lowpass", f0: 700, dur: 0.08, vol: 0.15, retraso: 0.4 * dur });
+    this.ruidoFiltrado({ tipo: "bandpass", f0: 3400, q: 5, dur: 0.05, vol: 0.3, ataque: 0.001, retraso: 0.8 * dur });
+    this.barrido({ f0: 1500, f1: 800, dur: 0.05, vol: 0.1, tipo: "triangle", retraso: 0.8 * dur });
+    this.ruidoFiltrado({ tipo: "bandpass", f0: 1800, f1: 3200, q: 3, dur: 0.07, vol: 0.2, ataque: 0.002, retraso: 0.9 * dur });
+    this.ruidoFiltrado({ tipo: "bandpass", f0: 3800, q: 4, dur: 0.03, vol: 0.25, ataque: 0.001, retraso: 0.95 * dur });
+  },
+
+  // Pistola vacia: clic seco
+  sinBalas() {
+    if (!this.ctx) return;
+    this.ruidoFiltrado({ tipo: "bandpass", f0: 3000, q: 5, dur: 0.03, vol: 0.2, ataque: 0.001 });
   },
 
   // ---------------------------------------------------------------- objetos

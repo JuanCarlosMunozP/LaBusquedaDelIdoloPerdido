@@ -8,6 +8,7 @@ import { sonido, vista, frio, suministros, inventario } from './servicios.js';
 import { teclas } from './controles.js';
 import { matarJugador } from './ciclo.js';
 import { revisarPortal } from './niveles.js';
+import { actualizarRecarga } from './recarga.js';
 import { actualizarBote, sincronizarBote, alturaBanco } from './bote.js';
 
 let avisoMar = 0;
@@ -35,6 +36,7 @@ const _adelante = new THREE.Vector2(), _derecha = new THREE.Vector2(), _dir = ne
 function actualizarCombateJugador(dt) {
   jugador.golpeCooldown -= dt;
   jugador.invulnerable -= dt;
+  actualizarRecarga(dt);
 
   if (jugador.golpePendiente >= 0) {
     jugador.golpePendiente -= dt;
@@ -200,6 +202,7 @@ function actualizarEntornoJugador(dt) {
   sonido.ajustarFuego(dFuego);
   if (g.tiempo > proximoSondeoAgua) {            // cercania al agua: se busca la orilla en 8 direcciones
     proximoSondeoAgua = g.tiempo + 0.2;
+    sonido.ajustarAmbiente(g.mundo.tema.tipo);
     sonido.ajustarAgua(g.mundo.agua ? g.mundo.agua.tipo : null, g.mundo.agua ? cercaniaAgua() : 0);
   }
 

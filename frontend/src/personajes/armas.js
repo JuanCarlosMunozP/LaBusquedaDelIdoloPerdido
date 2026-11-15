@@ -5,6 +5,7 @@
 //   dano = vida que quita a Max | golpeEnemigo = vida que quita a un mercenario (tiene 3) cuando Max la usa | espera = segundos entre ataques
 import * as THREE from 'three';
 import { reglas } from '../juego/reglas.js';
+import { suave } from './ayudas.js';
 
 const metal = () => new THREE.MeshStandardMaterial({ color: 0x1d1e22, roughness: 0.4, metalness: 0.7 });
 const acero = () => new THREE.MeshStandardMaterial({ color: 0xc9ced4, roughness: 0.25, metalness: 0.9 });
@@ -23,6 +24,11 @@ function crearPistola() {
   g.add(caja(0.034, 0.21, 0.042, metal(), 0, 0.09, 0.0));          // corredera
   g.add(caja(0.03, 0.05, 0.1, metal(), 0, 0.005, -0.06));           // empuñadura
   g.add(caja(0.012, 0.045, 0.012, metal(), 0, 0.04, -0.03));        // gatillo
+  const corredera = g.children[0];
+  const cargador = caja(0.026, 0.04, 0.02, acero(), 0, 0.005, -0.115);   // base del cargador, asoma bajo la empuñadura
+  g.add(cargador);
+  g.userData.corredera = corredera;
+  g.userData.cargador = cargador;
   const fogonazo = new THREE.Mesh(new THREE.SphereGeometry(0.06, 8, 6), new THREE.MeshBasicMaterial({
     color: 0xffd36a, blending: THREE.AdditiveBlending, transparent: true, depthWrite: false, toneMapped: false
   }));
@@ -31,6 +37,21 @@ function crearPistola() {
   g.add(fogonazo);
   g.userData.fogonazo = fogonazo;
   return g;
+}
+
+// Balas que caben en el cargador de la pistola (lo mismo para Max y los mercenarios).
+export const BALAS_POR_CARGADOR = 6;
+export const DURACION_RECARGA = 1.7;   // segundos
+
+// Mueve las piezas de la pistola segun el avance p (0..1) de la recarga: el cargador sale hacia abajo,
+// se guarda, entra uno nuevo y la corredera se jala hacia atras para montar la primera bala.
+export function animarRecargaArma(malla, p) {
+  const U = malla?.userData;
+  if (!U?.cargador) return;
+  const fuera = suave(0.3, 0.4, p) * (1 - suave(0.7, 0.8, p));    // 0 = puesto, 1 = fuera
+  U.cargador.position.z = -0.115 - 0.16 * fuera;
+  U.cargador.visible = !(p > 0.4 && p < 0.7);                      // mientras la mano va al cinturon
+  U.corredera.position.y = 0.09 - 0.035 * (suave(0.84, 0.9, p) * (1 - suave(0.9, 0.96, p)));
 }
 
 function crearCuchillo() {

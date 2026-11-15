@@ -118,8 +118,9 @@ export class Sonido {
     g.gain.value = 0.05;
     src.connect(f).connect(g).connect(this.oasis);
     src.start();
+    this.gOasisSint = g;             // se baja cuando llega la muestra real (muestras.js)
     setInterval(() => {
-      if (this.volOasis > 0.02) g.gain.setTargetAtTime(0.03 + Math.random() * 0.05, ctx.currentTime, 0.4);
+      if (this.volOasis > 0.02 && !this.muestras?.oasis) g.gain.setTargetAtTime(0.03 + Math.random() * 0.05, ctx.currentTime, 0.4);
     }, 600);
     const gotear = () => {
       if (this.volOasis > 0.02) this.gota();

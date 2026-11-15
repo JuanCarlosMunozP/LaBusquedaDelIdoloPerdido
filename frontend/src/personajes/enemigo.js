@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { NOMBRES_ESTILO_ANDAR } from './posesAndar.js';
 import { Humano, DURACION_GOLPE, INSTANTE_IMPACTO } from './personaje.js';
-import { armaAleatoria, equiparArma, zonaDeBala } from './armas.js';
+import { armaAleatoria, equiparArma, zonaDeBala, BALAS_POR_CARGADOR, DURACION_RECARGA } from './armas.js';
 import { amortiguar, suave } from './ayudas.js';
 
 const VELOCIDAD_BALA = 26;
@@ -24,6 +24,8 @@ export class Enemigo {
     this.disparoT = -1;         // cuenta regresiva del disparo (apuntar -> disparar -> bajar el arma)
     this.disparado = false;
     this.fogonazoT = 0;
+    this.cargador = BALAS_POR_CARGADOR;   // balas en el cargador; al vaciarse recarga (estado "recarga")
+    this.recargaT = 0;
     this.casa = new THREE.Vector2(x, z);
     this.pos = new THREE.Vector3(x, mundo.altura(x, z), z);
     mundo.resolver(this.pos, 0.4);               // si su puesto cae dentro de un arbol, nace al lado
@@ -55,10 +57,11 @@ export class Enemigo {
     if (this.vida <= 0) {
       this.estado = "muerto";
       this.humano.apuntando = 0;
+      this.humano.recarga = 0;
       this.humano.morir(undefined, { x: dirX, z: dirZ });
       return true; // murio
     }
-    if (this.estado !== "dispara") this.estado = "persigue";
+    if (this.estado !== "dispara" && this.estado !== "recarga") this.estado = "persigue";
     return false;
   }
 
@@ -83,6 +86,7 @@ export class Enemigo {
     const fogonazo = malla?.userData.fogonazo;
     if (fogonazo) { fogonazo.visible = true; this.fogonazoT = 0.07; }
     sonido?.disparo();
+    this.cargador--;
   }
 
   // Mueve las balas y revisa si alcanzan a Max (cilindro de 0.4 m de radio y 1.8 m de alto, revisado
@@ -166,14 +170,18 @@ export class Enemigo {
     const marcha = this.nadando ? Math.min(1.4, nadar) : 1.4, carrera = this.nadando ? nadar : 3.4;
 
     // ---- decidir estado
-    if (this.estado !== "ataca" && this.estado !== "dispara") {
+    if (this.estado !== "ataca" && this.estado !== "dispara" && this.estado !== "recarga") {
       const vision = A.tipo === "pistola" ? 14 : 10;
       if (jugador.vivo && dist < vision) this.estado = "persigue";
       else if (this.estado === "persigue" && (dist > vision + 7 || !jugador.vivo)) this.estado = "patrulla";
     }
     if (this.estado === "persigue" && this.cooldown <= 0 && !this.nadando) {
       if (A.tipo === "pistola") {
-        if (dist < A.rango && jugador.vivo) {        // apunta, dispara y baja el arma
+        if (this.cargador <= 0) {                    // cargador vacio: recarga (se queda sin disparar un rato)
+          this.estado = "recarga";
+          this.recargaT = 0;
+          if (dist < 30) sonido?.recargar(DURACION_RECARGA + 0.2);
+        } else if (dist < A.rango && jugador.vivo) {        // apunta, dispara y baja el arma
           this.estado = "dispara";
           this.disparoT = 0.65;
           this.disparado = false;
@@ -223,6 +231,16 @@ export class Enemigo {
         this.estado = "persigue";
         this.cooldown = A.espera;
       }
+    } else if (this.estado === "recarga") {
+      // se aparta un poco de Max mientras recarga, sin quitarle la vista de encima
+      h.mirarHacia(Math.atan2(dx, dz), dt);
+      this.recargaT += dt;
+      if (dist < A.distancia * 0.6) { vx = -(dx / dist) * 1.2; vz = -(dz / dist) * 1.2; }
+      if (this.recargaT >= DURACION_RECARGA + 0.2) {
+        this.cargador = BALAS_POR_CARGADOR;
+        this.estado = "persigue";
+        this.cooldown = 0.3;
+      }
     } else if (this.estado === "dispara") {
       h.mirarHacia(Math.atan2(dx, dz), dt, 16);
       this.disparoT -= dt;
@@ -235,7 +253,8 @@ export class Enemigo {
         this.cooldown = A.espera;
       }
     }
-    h.apuntando = this.estado === "dispara" ? 1 : 0;   // levanta el brazo del arma al apuntar
+    h.apuntando = this.estado === "dispara" || this.estado === "recarga" ? 1 : 0;   // levanta el brazo del arma al apuntar
+    h.recarga = this.estado === "recarga" ? Math.max(0.001, Math.min(1, this.recargaT / (DURACION_RECARGA + 0.2))) : 0;
 
     if (this.estado === "patrulla" && (vx || vz)) h.mirarHacia(Math.atan2(vx, vz), dt);
 

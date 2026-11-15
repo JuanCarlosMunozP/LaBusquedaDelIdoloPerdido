@@ -12,6 +12,7 @@ import { crearPosesNadoMar } from './posesNadoMar.js';
 import { crearPosesNadoOasis } from './posesNadoOasis.js';
 import { crearPosesCombate } from './posesCombate.js';
 import { crearPosesAndar } from './posesAndar.js';
+import { crearPosesRecarga } from './posesRecarga.js';
 
 // Variantes del reposo (duracion en segundos)
 const VARIANTES_REPOSO = [
@@ -391,4 +392,4 @@ export const posesHumano = {
 };
 
 // estilos de nado extra (flotar, braza lenta, crol rapido, espalda): ver posesNado.js
-Object.assign(posesHumano, crearPosesNado(), crearPosesNadoMar(), crearPosesNadoOasis(), crearPosesCombate(), crearPosesAndar());
+Object.assign(posesHumano, crearPosesNado(), crearPosesNadoMar(), crearPosesNadoOasis(), crearPosesCombate(), crearPosesAndar(), crearPosesRecarga());
