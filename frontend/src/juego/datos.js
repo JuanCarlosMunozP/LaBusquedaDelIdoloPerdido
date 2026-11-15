@@ -8,7 +8,7 @@ export const IDOLOS_POR_NIVEL = 2;
 export const METROS_NADO = 15;
 export const NIVELES = [
   { nombre: TEMAS[0].nombre, enemigos: 2, extras: ["ruinas"],
-    descripcion: "Has despertado en una playa tras el naufragio. Daniel te espera para guiarte: reúne los ídolos dorados, derrota a los mercenarios y toca las ruinas antiguas del centro para que aparezca el bote." },
+    descripcion: "Has despertado en una playa tras el naufragio. Daniel te espera para guiarte: reúne los ídolos dorados, derrota a los mercenarios y toca las ruinas antiguas del centro para que aparezca el bote en la orilla." },
   { nombre: TEMAS[1].nombre, enemigos: 3, extras: ["altar", "fogata"],
     descripcion: "La montaña es fría y está vigilada. Reúne los ídolos, derrota a los mercenarios, escala hasta el altar de la cima y caliéntate en la fogata antes de que el frío te venza." },
   { nombre: TEMAS[2].nombre, enemigos: 4, extras: ["nadar"],
@@ -25,7 +25,7 @@ export const GUIONES = [
     "Por suerte te encontré. Pero no nos iremos sin el ídolo que viniste a buscar.",
     "Para volver a casa necesitamos el ídolo perdido, y está repartido en tres lugares. Esta playa es el primero.",
     "Tu misión: reúne los 2 ídolos dorados, derrota a los mercenarios que patrullan y toca las ruinas antiguas del centro.",
-    "Cuando termines, aparecerá un bote en el mar: nada hasta él. Cada cierto tiempo aparecen por la isla botiquines de cruz roja (curan) y cajas verdes con armas para defenderte, pero desaparecen al minuto. ¡Mucha suerte!"
+    "Cuando termines, aparecerá un bote en la orilla: sube y rema hasta la baliza de luz del mar. Cada cierto tiempo aparecen por la isla botiquines de cruz roja (curan) y cajas verdes con armas para defenderte, pero desaparecen al minuto. ¡Mucha suerte!"
   ],
   [
     "Lo lograste, Max. Esta es la montaña: aquí hace frío y los mercenarios vigilan cada ladera.",

@@ -6,7 +6,7 @@ export const TEMAS = [
     niebla: 0xd98a5a, densidad: 0.0105, mar: 0x1c6a86, solColor: 0xffa860, hemi: 0xffc89a, roca: 0x7d7a72,
     cielo: { cenit: [0.05, 0.09, 0.26], medio: [0.78, 0.32, 0.26], horizonte: [1.0, 0.62, 0.30] },
     idolos: [[-22, -8], [18, -18]], spawn: { x: 0, z: 14.5 }, salida: { x: 0, z: -57 },
-    vehiculo: "bote", salidaTexto: "Nada hasta el bote que apareció en el mar.",
+    vehiculo: "bote", salidaTexto: "El bote te espera en la orilla: sube y rema hasta la baliza de luz del mar.",
     limiteTexto: "Una corriente te empuja de vuelta: cumple los objetivos de la isla para llamar al bote." },
   { nombre: "La Montaña Nevada", tipo: "montana", semilla: 21, desfase: 3, limite: 58,
     arena: 0x8a8578, pasto: 0x6a8050, pastoOscuro: 0x77726a, hierba: [0.27, 0.35, 0.2], hierbaN: 4500,

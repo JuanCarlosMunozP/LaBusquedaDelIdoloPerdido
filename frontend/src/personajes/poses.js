@@ -8,6 +8,10 @@ import { suave } from './ayudas.js';
 import { ARTICULACIONES, DURACION_GOLPE } from './constantes.js';
 import { avanzarFase } from './mezcla.js';
 import { crearPosesNado } from './posesNado.js';
+import { crearPosesNadoMar } from './posesNadoMar.js';
+import { crearPosesNadoOasis } from './posesNadoOasis.js';
+import { crearPosesCombate } from './posesCombate.js';
+import { crearPosesAndar } from './posesAndar.js';
 
 // Variantes del reposo (duracion en segundos)
 const VARIANTES_REPOSO = [
@@ -18,70 +22,6 @@ const VARIANTES_REPOSO = [
 ];
 
 export const posesHumano = {
-  // Braza en el estanque del oasis.
-  poseNadoOasis(ctx) {
-    const { velocidad, dt, o } = ctx;
-    // braza en el estanque: tranquila y con la cabeza fuera. Los brazos se estiran al frente, se
-    // abren en arco, se recogen bajo el pecho y vuelven a salir; las piernas se encogen y patean
-    // como rana. En el sitio solo chapotea suave.
-    const f = 0.4 + 0.6 * Math.min(velocidad / 1.9, 1);
-    // fase acumulada (en ciclos): si dependiera de `tiempo * frecuencia`, cada cambio de velocidad
-    // haria saltar los brazos a otra posicion de la brazada
-    this.faseOasis = avanzarFase(this.faseOasis, dt, (1.1 + 0.6 * Math.min(velocidad / 1.9, 1)) * Math.PI * 2) / (Math.PI * 2);
-    const p = this.faseOasis;
-    const abre = Math.max(0, Math.sin(Math.PI * 2 * p));      // brazos abiertos en arco
-    const recoge = Math.max(0, -Math.sin(Math.PI * 2 * p));   // codos recogidos bajo el pecho
-    for (const [nom, fuera, codo] of [["I", 1, -1], ["D", -1, 1]]) {   // fuera = signo que aleja el brazo del cuerpo
-      o["hombro_" + nom][0] = (-2.85 + 0.45 * abre + 1.15 * recoge) * f - 0.25 * (1 - f);   // con el cuerpo tendido, -2.85 = brazo estirado por delante de la cabeza
-      o["hombro_" + nom][2] = fuera * (0.1 + 0.8 * abre) * f;
-      o["codo_" + nom][1] = codo * (0.1 + 0.5 * abre + 1.6 * recoge) * f;
-    }
-    const encoge = Math.max(0, Math.sin(Math.PI * 2 * (p + 0.15))) * f;    // las piernas se encogen y luego patean
-    for (const [nom, fuera] of [["I", -1], ["D", 1]]) {
-      o["muslo_" + nom][0] = 0.1 + 0.2 * encoge;
-      o["muslo_" + nom][2] = fuera * (0.08 + 0.3 * encoge);
-      o["rodilla_" + nom][0] = 0.15 + 0.35 * encoge;
-    }
-    o.torso[0] = -0.08;
-    o.cabeza[0] = -0.7;                       // mira al frente, fuera del agua
-    ctx.roll = 0.04 * Math.sin(Math.PI * 2 * p) * f;   // leve balanceo de lado a lado con cada braceo
-    ctx.cabeceo = -0.04 * (1 - f);                      // casi vertical cuando se queda en el sitio
-    ctx.bob = Math.sin(Math.PI * 2 * p) * 0.025;
-  },
-
-  // Crol en el mar.
-  poseNado(ctx) {
-    const { velocidad, tiempo, o } = ctx;
-    // crol: brazos que giran alternados, patada de tijera y cuerpo tendido sobre el agua
-    // fase acumulada: ver poseNadoOasis (evita el salto de brazada al cambiar de velocidad)
-    this.faseNado = avanzarFase(this.faseNado, ctx.dt, 3.2 + 1.6 * Math.min(velocidad / 3, 1));
-    const brazada = this.faseNado;
-    const f = 0.45 + 0.55 * Math.min(velocidad / 2.5, 1);   // en el sitio, brazadas mas suaves
-    for (const [lado, nom, ph] of [[-1, "I", brazada], [1, "D", brazada + Math.PI]]) {
-      const fase = Math.cos(ph), recobro = Math.max(0, Math.sin(ph));
-      o["hombro_" + nom][0] = (-1.35 - 1.5 * fase) * f - 0.2 * (1 - f);
-      o["hombro_" + nom][2] = lado * (0.12 + 0.18 * recobro);
-      // al tirar del agua (fuera del recobro) el codo se dobla un poco: agarra el agua en vez de empujarla recta
-      const traccion = Math.max(0, -Math.sin(ph));
-      o["codo_" + nom][1] = lado * (0.12 + 1.0 * recobro + 0.3 * traccion) * f;
-    }
-    const vf = Math.min(velocidad / 2.5, 1);                  // 0 = chapoteando en el sitio, 1 = nadando fuerte
-    const patada = Math.sin(tiempo * 12) * (0.55 + 0.45 * vf);   // la patada se afloja al ir despacio
-    o.muslo_I[0] = 0.12 + 0.28 * patada;
-    o.muslo_D[0] = 0.12 - 0.28 * patada;
-    o.rodilla_I[0] = 0.18 + 0.2 * Math.max(0, -patada);
-    o.rodilla_D[0] = 0.18 + 0.2 * Math.max(0, patada);
-    o.torso[1] = 0.28 * Math.cos(brazada) * f;
-    o.cabeza[0] = -0.85;                     // levanta la cara para mirar al frente
-    o.cabeza[1] = -0.28 * Math.cos(brazada) * f;
-    // cuerpo entero (lo aplica Humano en #inclinarCuerpo): se balancea con la brazada en el mismo
-    // sentido que el giro del torso, sube y baja con cada brazada, y va mas vertical (las piernas
-    // se hunden) cuando casi no avanza, como alguien que se mantiene a flote
-    ctx.roll = 0.16 * Math.cos(brazada) * f;
-    ctx.cabeceo = -0.16 * (1 - vf) + 0.035 * Math.sin(brazada * 2) * vf;
-    ctx.bob = Math.sin(brazada * 2) * 0.04 * (0.4 + 0.6 * vf);
-  },
-
   // Salto o caida: piernas y brazos sueltos en el aire.
   poseAire(ctx) {
     const { tiempo, velocidadVertical, o } = ctx;
@@ -113,15 +53,15 @@ export const posesHumano = {
     const { o, A, s, c, corre } = ctx;
     // caminar / correr: zancada corta, piernas juntas
     const L = THREE.MathUtils.lerp;
-    const paso = L(Math.min(A, 1.2) * 0.38, 0.78, corre);
+    const paso = L(Math.min(A, 1.2) * 0.44, 0.82, corre);
     o.muslo_I[0] = s * paso;
     o.muslo_D[0] = -s * paso;
-    o.rodilla_I[0] = Math.max(0, -c) * L(0.8 * Math.min(A, 1.2), 1.7, corre);
-    o.rodilla_D[0] = Math.max(0, c) * L(0.8 * Math.min(A, 1.2), 1.7, corre);
+    o.rodilla_I[0] = Math.max(0, -c) * L(1.0 * Math.min(A, 1.2), 1.8, corre);
+    o.rodilla_D[0] = Math.max(0, c) * L(1.0 * Math.min(A, 1.2), 1.8, corre);
     // brazos: balanceo hacia adelante y atras, opuesto a la pierna del mismo lado;
     // el codo se dobla mas cuando el brazo va hacia adelante
     const Ab = Math.min(A, 1.5);
-    const vaiven = L(0.62 * Ab, 0.95, corre);
+    const vaiven = L(0.72 * Ab, 1.05, corre);
     o.hombro_I[0] = -s * vaiven;
     o.hombro_D[0] = s * vaiven;
     o.codo_I[1] = -L(0.22 + 0.2 * Ab + 0.5 * Ab * Math.max(0, s), 1.2 + 0.25 * s, corre);
@@ -132,9 +72,11 @@ export const posesHumano = {
     // caderas y hombros giran en sentido contrario, la cabeza se mantiene mirando al frente
     o.cadera[1] = s * 0.10 * A;
     o.cadera[2] = -s * 0.04 * Math.min(A, 1.2);
+    o.cadera[0] = 0.04 * Math.abs(c) * Math.min(A, 1.2);   // la pelvis cabecea un poco con cada paso
     o.torso[1] = -s * 0.22 * A;
     o.torso[0] = 0.05 + 0.07 * A + 0.17 * corre;   // al correr se inclina hacia adelante
     o.cabeza[1] = s * 0.12 * A;
+    o.cabeza[2] = 0.03 * c * Math.min(A, 1.2);              // la cabeza acompaña el balanceo del paso
     o.cabeza[0] = -0.12 * corre;
     // Inclinacion al girar y al arrancar/frenar (ejes: +Z = inclinarse a la derecha del personaje,
     // +X de torso = hacia adelante). giro > 0 = gira a su izquierda, asi que se inclina hacia ella
@@ -145,7 +87,7 @@ export const posesHumano = {
     o.cabeza[2] -= 0.6 * ladeo;                  // la cabeza compensa y se mantiene casi nivelada
     o.cadera[2] -= 0.4 * ladeo;
     o.torso[0] += THREE.MathUtils.clamp((ctx.accel || 0) * 0.012, -0.12, 0.12) * presencia;
-    ctx.bob = Math.abs(c) * (0.05 * A + 0.04 * corre);
+    ctx.bob = Math.abs(c) * (0.06 * A + 0.05 * corre);
   },
 
   // Quieto: respira, mira un poco a los lados y, de vez en cuando, hace algo distinto (cambia el
@@ -449,4 +391,4 @@ export const posesHumano = {
 };
 
 // estilos de nado extra (flotar, braza lenta, crol rapido, espalda): ver posesNado.js
-Object.assign(posesHumano, crearPosesNado(posesHumano));
+Object.assign(posesHumano, crearPosesNado(), crearPosesNadoMar(), crearPosesNadoOasis(), crearPosesCombate(), crearPosesAndar());

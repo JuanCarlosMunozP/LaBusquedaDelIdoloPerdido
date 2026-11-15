@@ -4,8 +4,8 @@
 // Es logica pura (sin Three.js ni el modelo) para poder probarla por separado.
 
 // nado: crol en el mar | nadoOasis: braza del estanque | flotar: pataleo en el sitio |
-// nadoBraza: braza lenta en el mar | nadoRapido: crol fuerte | nadoEspalda: nada boca arriba
-export const ESTADOS_BASE = ["reposo", "caminar", "aire", "nado", "nadoOasis", "flotar", "nadoBraza", "nadoRapido", "nadoEspalda"];
+// nadoPerro: chapoteo "de perrito" al arrancar | nadoLado: nado de costado | nadoBraza: braza lenta en el mar | nadoRapido: crol fuerte | nadoEspalda: nada boca arriba
+export const ESTADOS_BASE = ["reposo", "caminar", "aire", "nado", "nadoOasis", "flotar", "nadoBraza", "nadoRapido", "nadoEspalda", "nadoPerro", "nadoLado"];
 
 // Metodo de `posesHumano` (poses.js) que calcula cada estado.
 export const POSE_DE_ESTADO = {
@@ -17,7 +17,9 @@ export const POSE_DE_ESTADO = {
   flotar: "poseFlotar",
   nadoBraza: "poseNadoBraza",
   nadoRapido: "poseNadoRapido",
-  nadoEspalda: "poseNadoEspalda"
+  nadoEspalda: "poseNadoEspalda",
+  nadoPerro: "poseNadoPerro",
+  nadoLado: "poseNadoLado"
 };
 
 // Un estado con menos peso que esto no se calcula (ahorra trabajo cuando ya casi no se nota).
@@ -62,12 +64,14 @@ const HISTERESIS = 0.18;
 const UMBRALES = {
   flotar: 0.4,                 // por debajo se queda en el sitio
   mar: { braza: 1.9, rapido: 2.9 },
-  oasis: { rapido: 2.3 }       // en el estanque la braza es el nado normal
+  oasis: { perro: 1.2, rapido: 2.3 }   // en el estanque la braza es el nado normal; al arrancar chapotea de perrito
 };
 
-export function estadoDeNado(agua, velocidad, atras = false, previo = null) {
+export function estadoDeNado(agua, velocidad, atras = false, previo = null, lado = false) {
   if (velocidad < UMBRALES.flotar + (previo === "flotar" ? HISTERESIS : 0)) return "flotar";
   if (atras) return "nadoEspalda";
+  if (lado) return "nadoLado";                      // avanzando de lado: nado de costado
+  if (agua === "oasis" && velocidad < UMBRALES.oasis.perro + (previo === "nadoPerro" ? HISTERESIS : 0)) return "nadoPerro";
   if (agua === "oasis") return velocidad > UMBRALES.oasis.rapido - (previo === "nadoRapido" ? HISTERESIS : 0) ? "nadoRapido" : "nadoOasis";
   const { braza, rapido } = UMBRALES.mar;
   if (velocidad > rapido - (previo === "nadoRapido" ? HISTERESIS : 0)) return "nadoRapido";

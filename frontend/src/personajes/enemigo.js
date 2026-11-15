@@ -1,6 +1,7 @@
 // Mercenarios enemigos: patrullan junto a su puesto, persiguen a Max y lo atacan con el arma que
 // les toco en esta partida (puños, cuchillo, bate, machete o pistola).
 import * as THREE from 'three';
+import { NOMBRES_ESTILO_ANDAR } from './posesAndar.js';
 import { Humano, DURACION_GOLPE, INSTANTE_IMPACTO } from './personaje.js';
 import { armaAleatoria, equiparArma, zonaDeBala } from './armas.js';
 import { amortiguar, suave } from './ayudas.js';
@@ -15,6 +16,7 @@ export class Enemigo {
     this.mundo = mundo;
     this.scene = scene;
     this.humano = new Humano(modelo);
+    this.humano.estiloAndar = NOMBRES_ESTILO_ANDAR[Math.floor(Math.random() * NOMBRES_ESTILO_ANDAR.length)];   // cada mercenario anda a su manera
     this.humano.personalizarMercenario();
     this.arma = arma;
     equiparArma(this.humano, arma);

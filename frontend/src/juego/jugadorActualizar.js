@@ -8,6 +8,7 @@ import { sonido, vista, frio, suministros, inventario } from './servicios.js';
 import { teclas } from './controles.js';
 import { matarJugador } from './ciclo.js';
 import { revisarPortal } from './niveles.js';
+import { actualizarBote, sincronizarBote, alturaBanco } from './bote.js';
 
 let avisoMar = 0;
 let avisoFrio = 0;
@@ -58,6 +59,7 @@ function moverJugador(dt) {
     if (g.tactil) { ix += g.tactil.mov.x; iz += g.tactil.mov.y; }     // joystick en pantalla
   }
   // nadar hacia atras (hacia la camara) = nadar de espaldas
+  jugador.nadoLado = jugador.nadando && Math.abs(ix) > 0.3 && Math.abs(iz) < Math.abs(ix) * 0.5;   // A/D sin avanzar: de costado
   jugador.nadoAtras = jugador.nadando && iz < -0.3 && Math.abs(ix) < Math.abs(iz) * 0.5;
 
   const dir = _dir.set(0, 0)
@@ -68,12 +70,14 @@ function moverJugador(dt) {
 
   const correr = teclas["shift"] || (g.tactil && g.tactil.correr);
   const vAgua = g.mundo.agua ? g.mundo.agua.velocidad : null;   // cada masa de agua tiene su ritmo
-  const rapidez = moviendo ? (jugador.nadando ? (correr ? vAgua.rapido : vAgua.nadar) : correr ? 6.4 : 3.4) : 0;
+  actualizarBote(dt, moviendo);
+  const rapidez = moviendo ? (jugador.enBote ? (correr ? 4.4 : 3.1) : jugador.nadando ? (correr ? vAgua.rapido : vAgua.nadar) : correr ? 6.4 : 3.4) : 0;
   const k = Math.min(1, dt * (moviendo ? 12 : 9));
   jugador.vel.x += (dir.x * rapidez - jugador.vel.x) * k;
   jugador.vel.z += (dir.y * rapidez - jugador.vel.z) * k;
 
   // ---- mover (no se puede entrar al mar)
+  const xAntes = jugador.pos.x, zAntes = jugador.pos.z;
   const nx = jugador.pos.x + jugador.vel.x * dt;
   const nz = jugador.pos.z + jugador.vel.z * dt;
   if (g.mundo.dentroDelMapa(nx, nz)) {          // el mar se nada hasta el limite del mapa
@@ -88,20 +92,30 @@ function moverJugador(dt) {
     decir(g.mundo.tema.limiteTexto, 4);
   }
   g.mundo.resolver(jugador.pos, 0.42);
+  if (jugador.enBote) sincronizarBote(xAntes, zAntes, dt);   // el bote sigue al jugador y no sube a tierra
 
   // ---- salto y gravedad
   const suelo = g.mundo.altura(jugador.pos.x, jugador.pos.z);
   const estabaNadando = jugador.nadando;
   // histeresis: entra al agua con fondo > 0.45 m y sale con menos de 0.15 m (evita parpadeos en la orilla)
-  jugador.nadando = g.mundo.agua ? g.mundo.agua.contiene(jugador.pos.x, jugador.pos.z, estabaNadando) : false;
-  if (estabaNadando && !jugador.nadando) sonido.chapoteo(0.5);   // sale del agua
-  if (jugador.nadando) {
+  const agua = g.mundo.agua;
+  jugador.nadando = agua ? agua.contiene(jugador.pos.x, jugador.pos.z, estabaNadando) : false;
+  // al acercarse a la orilla se levanta ANTES de llegar a la arena (no se hunde en la ribera)
+  if (jugador.nadando && estabaNadando && Math.hypot(jugador.vel.x, jugador.vel.z) > 0.3
+      && !agua.contiene(jugador.pos.x + jugador.vel.x * 0.4, jugador.pos.z + jugador.vel.z * 0.4, true)) jugador.nadando = false;
+  if (jugador.enBote) jugador.nadando = false;                       // sentado en el bote no se nada
+  if (estabaNadando && !jugador.nadando && !jugador.enBote) sonido.chapoteo(0.5);   // sale del agua
+  if (jugador.enBote) {
+    jugador.vy = 0;
+    jugador.enSuelo = true;
+    jugador.pos.y += (alturaBanco() - jugador.pos.y) * Math.min(1, dt * 14);   // sentado en el banco, cabecea con el bote
+  } else if (jugador.nadando) {
     // en el agua se flota: sin gravedad ni salto
     if (!estabaNadando) sonido.chapoteo(1);
     jugador.vy = 0;
     jugador.enSuelo = true;
     // el cuerpo tendido flota con la espalda a ras de la ola (sigue su altura real)
-    const objetivoY = g.mundo.agua.superficie(jugador.pos.x, jugador.pos.z, g.tiempo) - g.mundo.agua.flotacion;
+    const objetivoY = Math.max(agua.superficie(jugador.pos.x, jugador.pos.z, g.tiempo) - agua.flotacion, suelo);   // nunca por debajo del fondo
     jugador.pos.y += (objetivoY - jugador.pos.y) * Math.min(1, dt * 14);
   } else {
   if (jugador.enSuelo && (teclas[" "] || (g.tactil && g.tactil.saltar)) && jugador.vivo) {
@@ -133,6 +147,9 @@ function actualizarAnimacionJugador(dt) {
     }
   }
   g.axel.nadoAtras = jugador.nadoAtras;
+  g.axel.nadoLado = jugador.nadoLado;
+  // el andar del jugador cambia con la situacion: herido va cansado, con arma marcha firme, y al correr es agil
+  g.axel.estiloAndar = jugador.enBote ? null : jugador.vida <= 30 ? "cansado" : velocidadH > 4 ? "agil" : jugador.arma ? "marcial" : "normal";
   g.axel.grupo.position.copy(jugador.pos);
   g.axel.actualizar(dt, velocidadH, jugador.enSuelo, g.tiempo, jugador.vy, jugador.nadando && g.mundo.agua.tipo,   // "mar" = crol, "oasis" = braza
       // sombrero: lo decide el inventario (no en la montaña; se lo pone tras la cinematica)
@@ -142,7 +159,7 @@ function actualizarAnimacionJugador(dt) {
   const medioPaso = Math.floor(g.axel.fase / Math.PI);
   if (medioPaso !== pasoAnterior) {
     pasoAnterior = medioPaso;
-    if (jugador.enSuelo && !jugador.nadando && velocidadH > 1) sonido.paso(superficiePaso(), velocidadH > 4.8);
+    if (jugador.enSuelo && !jugador.nadando && !jugador.enBote && velocidadH > 1) sonido.paso(superficiePaso(), velocidadH > 4.8);
   }
   // brazadas al nadar (una cada ~0.6 s, mas seguidas si nada rapido)
   if (jugador.nadando && velocidadH > 0.4 && g.tiempo > proximaBrazada) {

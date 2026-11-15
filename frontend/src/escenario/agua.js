@@ -16,7 +16,7 @@ export function crearAgua(tipo, altura) {
   const enAgua = (x, z, dentro) => altura(x, z) < (dentro ? -0.15 : -0.45);
   if (tipo === "mar") {
     return {
-      tipo, nivel: NIVEL_AGUA, velocidad: { nadar: 2.4, rapido: 3.4 }, flotacion: 0.32,
+      tipo, nivel: NIVEL_AGUA, velocidad: { nadar: 2.4, rapido: 3.4 }, flotacion: 0.44,   // en el mar el cuerpo va medio hundido
       superficie: (x, z, t) => NIVEL_AGUA + olaMar(x, z, t),
       contiene: enAgua
     };

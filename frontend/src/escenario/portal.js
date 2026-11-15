@@ -20,8 +20,9 @@ export function crearPortal(scene, animables, matMadera) {
   aro.position.y = 0.9;
   const luzPortal = new THREE.PointLight(0x7fd8ff, 25, 18, 2);
   luzPortal.position.y = 2;
-  // bote de remos junto a la baliza (solo se ve en el nivel del mar)
+  // bote de remos (solo en el nivel del mar): espera en la orilla y el jugador lo rema hasta la baliza
   const bote = new THREE.Group();
+  const remos = [];
   {
     const casco = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.45, 3.4), matMadera);
     casco.position.y = 0.1;
@@ -33,7 +34,18 @@ export function crearPortal(scene, animables, matMadera) {
     const banco = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.08, 0.35), matMadera);
     banco.position.y = 0.4;
     bote.add(casco, proa, banco);
-    bote.position.set(2.6, -0.05, 0);
+    for (const lado of [-1, 1]) {                       // remos: giran sobre el borde del bote al remar
+      const pivote = new THREE.Group();
+      pivote.position.set(lado * 0.8, 0.55, -0.1);
+      const vara = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 2.0, 6), matMadera);
+      vara.rotation.z = Math.PI / 2;
+      vara.position.x = lado * 0.8;
+      const pala = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.04, 0.2), matMadera);
+      pala.position.x = lado * 1.75;
+      pivote.add(vara, pala);
+      remos.push(pivote);
+      bote.add(pivote);
+    }
     bote.traverse((m) => { m.castShadow = true; });
   }
   // refugio de montaña y caravana del desierto
@@ -73,23 +85,39 @@ export function crearPortal(scene, animables, matMadera) {
   portal.add(columna, aro, luzPortal, bote, refugio, caravana);
   portal.visible = false;
   scene.add(portal);
-  const portalDatos = { x: 0, z: 0, radio: 2.4, activo: false };
+  // `bote`: posicion y estado del bote de remos (x, z, yaw; abordo y fase de remada los maneja juego/bote.js)
+  const portalDatos = { x: 0, z: 0, radio: 2.4, activo: false, bote: { x: 0, z: 0, yaw: 0, abordo: false, fase: 0, remada: 0 } };
   animables.push((t) => {
     if (!portalDatos.activo) return;
     aro.rotation.z = t * 1.6;
     aro.position.y = 0.9 + Math.sin(t * 2) * 0.12;
     matHaz.opacity = 0.34 + Math.sin(t * 3) * 0.06;
     if (bote.visible) {
-      bote.position.y = -0.05 + Math.sin(t * 1.7) * 0.06;
+      const b = portalDatos.bote;
+      const y = -0.05 + Math.sin(t * 1.7) * 0.05;      // el bote cabecea sobre el agua (lo coloca en el mundo, no junto a la baliza)
+      bote.position.set(b.x - portal.position.x, y - portal.position.y, b.z - portal.position.z);
+      bote.rotation.y = b.yaw;
       bote.rotation.z = Math.sin(t * 1.3) * 0.04;
+      portalDatos.bote.y = y;
+      remos.forEach((r, i) => { r.rotation.y = (i ? -1 : 1) * Math.sin(b.fase) * 0.5 * b.remada; });   // palean al remar
     }
   });
 
-  // coloca la baliza; conBote = true cuando es la salida definitiva por mar
+  // El bote espera en la orilla de la isla, en el agua justo donde acaba la arena, mirando a la baliza.
+  function colocarEnLaOrilla(sx, sz) {
+    const largo = Math.hypot(sx, sz) || 1, dx = sx / largo, dz = sz / largo;
+    let d = 0;
+    while (d < largo && altura(dx * d, dz * d) > -0.4) d += 0.5;   // desde el centro de la isla hasta el primer fondo de agua
+    const b = portalDatos.bote;
+    b.x = dx * d; b.z = dz * d; b.yaw = Math.atan2(dx, dz); b.abordo = false; b.fase = 0; b.remada = 0;
+  }
+
+  // coloca la baliza; el bote (si hay) queda en la orilla
   function mostrarPortal(x, z, vehiculo) {
     portalDatos.x = x; portalDatos.z = z; portalDatos.activo = true;
     portal.position.set(x, Math.max(altura(x, z), -0.05), z);
     bote.visible = vehiculo === "bote";
+    if (bote.visible) colocarEnLaOrilla(x, z);
     refugio.visible = vehiculo === "refugio";
     caravana.visible = vehiculo === "caravana";
     portal.visible = true;

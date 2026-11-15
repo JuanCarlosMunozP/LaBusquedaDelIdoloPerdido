@@ -7,6 +7,10 @@ import { scene } from './escena.js';
 import { sonido, vista, suministros, inventario, objetosSueltos } from './servicios.js';
 import { matarJugador } from './ciclo.js';
 
+// Sin arma, cada F encadena un combo: punos por ambos brazos, gancho, patada, uppercut y patada giratoria.
+const COMBO = ["directo", "directo", "gancho", "patada", "directo", "uppercut", "giratoria"];
+let pasoCombo = 0;
+
 export function atacar() {
   if (!jugador.vivo || jugador.golpeCooldown > 0 || jugador.nadando) return;
   if (jugador.arma?.tipo === "pistola") {      // con pistola dispara en vez de golpear
@@ -16,7 +20,13 @@ export function atacar() {
     return;
   }
   if (jugador.arma) g.axel.brazoGolpe = "I";     // golpea con la mano derecha, donde lleva el arma
-  if (!g.axel.golpear()) return;
+  let estilo = "directo";
+  if (!jugador.arma) {
+    if (jugador.ultimoGolpe && g.tiempo - jugador.ultimoGolpe > 1.6) pasoCombo = 0;   // tras una pausa el combo empieza de nuevo
+    estilo = COMBO[pasoCombo % COMBO.length];
+  }
+  if (!g.axel.golpear(estilo)) return;
+  if (!jugador.arma) { pasoCombo++; jugador.ultimoGolpe = g.tiempo; }
   jugador.golpeCooldown = DURACION_GOLPE + 0.05;
   jugador.golpePendiente = INSTANTE_IMPACTO; // el puño conecta cuando el brazo se estira
   sonido.golpe(jugador.arma?.id);   // el sonido del golpe cambia segun el arma

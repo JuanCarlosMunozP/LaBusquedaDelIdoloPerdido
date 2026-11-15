@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { aparienciaHumano } from './apariencia.js';
 import { amortiguar, suave } from './ayudas.js';
+import { POSE_DE_GOLPE } from './posesCombate.js';
 import { ARTICULACIONES, DURACION_GOLPE, INSTANTE_IMPACTO } from './constantes.js';
 import { posesHumano } from './poses.js';
 import {
@@ -180,9 +181,11 @@ export class Humano {
     }
   }
 
-  golpear() {
+  // `estilo`: directo | gancho | uppercut | patada | giratoria (ver posesCombate.js)
+  golpear(estilo = "directo") {
     if (this.golpeT >= 0) return false;
     this.golpeT = 0;
+    this.estiloGolpe = estilo;
     this.brazoGolpe = this.brazoGolpe === "D" ? "I" : "D"; // alterna punos
     return true;
   }
@@ -246,14 +249,16 @@ export class Humano {
 
     // movimiento base: se elige el estado y las poses se MEZCLAN gradualmente (sin saltos)
     // al nadar, el estilo (flotar, braza, crol, crol rapido, espalda) lo decide la velocidad (ver mezcla.js)
-    if (nadando) this.estadoNado = estadoDeNado(nadando, velocidad, !!this.nadoAtras, this.estadoNado);
+    if (nadando) this.estadoNado = estadoDeNado(nadando, velocidad, !!this.nadoAtras, this.estadoNado, !!this.nadoLado);
     const estado = nadando ? this.estadoNado : !enSuelo ? "aire" : ctx.A > 0.05 ? "caminar" : "reposo";
     this.#mezclarPoseBase(ctx, estado);
 
     // capas que se suman encima, en este orden
+    if (this.estiloAndar) this.#calcularPose(ctx, posesHumano.poseEstiloAndar);
+    if (this.remando > 0) this.#calcularPose(ctx, posesHumano.poseRemar);
     if (this.impactoAterrizaje > 0) this.#calcularPose(ctx, posesHumano.ajusteAterrizaje);
     if ((this.apuntando || 0) > 0.01) this.#calcularPose(ctx, posesHumano.poseApuntar);
-    if (this.golpeT >= 0) this.#calcularPose(ctx, posesHumano.poseGolpe);
+    if (this.golpeT >= 0) this.#calcularPose(ctx, posesHumano[POSE_DE_GOLPE[this.estiloGolpe] ?? "poseGolpe"]);
     if (this.destelloT > 0) this.#calcularPose(ctx, posesHumano.poseDestello);
     if (this.herida) this.#calcularPose(ctx, posesHumano.poseHerida);
     if (this.bajarBrazos) this.#calcularPose(ctx, posesHumano.poseBajarBrazos);
@@ -412,7 +417,7 @@ export class Humano {
     // el punto mas bajo de la malla queda justo sobre el suelo, ni flotando ni hundido.
     // Nadando, descansando en la cama o saltando se usa el rebote de la animacion (en el aire
     // la altura la da la fisica del juego).
-    const objetivoY = bob - 0.02 * A + (nadando === "oasis" ? 0.04 : 0.3) * this.nado + (this.descansando ? 0.16 : 0);   // en el oasis va mas hundido: las piernas quedan bajo el agua
+    const objetivoY = bob - 0.02 * A + (nadando === "oasis" ? 0.04 : 0.02) * this.nado + (this.descansando ? 0.16 : 0);   // en el oasis va mas hundido: las piernas quedan bajo el agua
     const anclar = (enSuelo || this.muerto) && this.nado < 0.02 && !this.descansando;
     if (anclar) {
       if (this.muerto && this.muerteT >= 1) {
