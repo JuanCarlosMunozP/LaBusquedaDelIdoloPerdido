@@ -124,3 +124,17 @@ describe('inventario en la API de cuentas', () => {
     expect(r).toMatchObject({ ok: false, mensaje: 'La mochila guarda como máximo 3 armas.' });
   });
 });
+
+describe('respuesta de cuentas sin el cuerpo esperado', () => {
+  it('un "ok" sin JSON (servidor sin API) da un error claro y no una excepcion', async () => {
+    const sinCuerpo = { ok: true, status: 200, headers: { get: () => null }, json: async () => { throw new Error('no es json'); } };
+    api.configurarFetchApi(async () => sinCuerpo);
+    for (const accion of [() => api.registrarEnServidor('Ana', 'x'), () => api.entrarEnServidor('Ana', 'x'), () => api.sesionEnServidor()]) {
+      const r = await accion();
+      expect(r.ok).toBe(false);
+      expect(r.mensaje).toMatch(/API de cuentas/);
+    }
+    const r = await cuenta.registrar('Ana', 'ClaveSegura123');
+    expect(r.ok).toBe(false);
+  });
+});

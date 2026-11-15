@@ -76,9 +76,12 @@ async function peticionJson(ruta, metodo = "GET", cuerpo = null) {
   return { ok: true, status: res.status, datos: json };
 }
 
-export async function registrarEnServidor(nombre, clave) {
-  const r = await peticionJson("/api/v1/auth/register", "POST", { nombre, clave });
-  if (!r.ok) return r;
+// Una respuesta "ok" sin el cuerpo esperado (por ejemplo, un servidor estatico sin API que contesta con una pagina)
+// no es una sesion valida: se avisa en vez de fallar mas adelante con un error de JavaScript.
+const respuestaDeCuenta = (r) => {
+  if (typeof r.datos?.nombre !== "string") {
+    return { ok: false, status: r.status, codigo: "BAD_RESPONSE", mensaje: "El servidor no respondió como se esperaba. Comprueba que la API de cuentas esté disponible." };
+  }
   return {
     ok: true,
     nombre: r.datos.nombre,
@@ -86,30 +89,21 @@ export async function registrarEnServidor(nombre, clave) {
     datos: adaptarDatosServidor(r.datos.progreso),
     aviso: r.datos.aviso || null,
   };
+};
+
+export async function registrarEnServidor(nombre, clave) {
+  const r = await peticionJson("/api/v1/auth/register", "POST", { nombre, clave });
+  return r.ok ? respuestaDeCuenta(r) : r;
 }
 
 export async function entrarEnServidor(nombre, clave) {
   const r = await peticionJson("/api/v1/auth/login", "POST", { nombre, clave });
-  if (!r.ok) return r;
-  return {
-    ok: true,
-    nombre: r.datos.nombre,
-    csrfToken: csrfTokenMemoria,
-    datos: adaptarDatosServidor(r.datos.progreso),
-    aviso: r.datos.aviso || null,
-  };
+  return r.ok ? respuestaDeCuenta(r) : r;
 }
 
 export async function sesionEnServidor() {
   const r = await peticionJson("/api/v1/auth/me", "GET");
-  if (!r.ok) return r;
-  return {
-    ok: true,
-    nombre: r.datos.nombre,
-    csrfToken: csrfTokenMemoria,
-    datos: adaptarDatosServidor(r.datos.progreso),
-    aviso: r.datos.aviso || null,
-  };
+  return r.ok ? respuestaDeCuenta(r) : r;
 }
 
 export async function actualizarProgresoEnServidor({ nivel = null, tiempoVictoria = null }) {
