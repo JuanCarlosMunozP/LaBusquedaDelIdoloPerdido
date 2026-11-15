@@ -154,3 +154,6 @@ export const estadoSuministros = async (carrera) =>
   ok(await peticionJson(`/api/v1/supplies/runs/${encodeURIComponent(carrera)}`, "GET"));
 export const reclamarSuministro = async (carrera, item) =>
   ok(await peticionJson(`/api/v1/supplies/runs/${encodeURIComponent(carrera)}/claim`, "POST", { item }));
+
+// ---- multijugador: crear una sala nueva (solo con cuenta); entrar a ella es por WebSocket
+export const crearSalaEnServidor = async () => ok(await peticionJson("/api/v1/rooms", "POST"));

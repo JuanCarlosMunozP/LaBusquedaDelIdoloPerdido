@@ -16,6 +16,11 @@ export default defineConfig({
   server: {
     headers: SECURITY_HEADERS,
     proxy: {
+      // multijugador: WebSocket (changeOrigin apagado para que el Host siga igual que el Origin del navegador)
+      '/api/v1/ws': {
+        target: process.env.VITE_API_TARGET || 'http://127.0.0.1:8000',
+        ws: true,
+      },
       '/api': {
         target: process.env.VITE_API_TARGET || 'http://127.0.0.1:8000',
         changeOrigin: true,

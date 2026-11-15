@@ -6,6 +6,7 @@ import { TEMAS } from './temas.js';
 import { altura, usarBioma, OASIS } from './terreno.js';
 import { aleatorio, textura } from './utilidades.js';
 import { crearCielo } from './cielo.js';
+import { cargarTexturas, texturarSuelo, texturarAgua } from './texturas.js';
 import { crearVegetacion } from './vegetacion.js';
 import { crearPortal } from './portal.js';
 import { crearNieve } from './nieve.js';
@@ -42,6 +43,7 @@ export async function crearMundo(scene, gltfLoader, tema = TEMAS[0]) {
   scene.add(relleno);
 
   // ====== TERRENO
+  const texturas = await cargarTexturas();      // arena, tierra y agua reales (texturas.js)
   const TAM = 130, SEG = dispositivo.segmentosTerreno;
   const gTerreno = new THREE.PlaneGeometry(TAM, TAM, SEG, SEG);
   gTerreno.rotateX(-Math.PI / 2);
@@ -68,19 +70,10 @@ export async function crearMundo(scene, gltfLoader, tema = TEMAS[0]) {
   gTerreno.setAttribute("color", new THREE.BufferAttribute(colores, 3));
   gTerreno.computeVertexNormals();
 
-  const texTierra = textura(256, (ctx, t) => {
-    ctx.fillStyle = "#e8e8e8";
-    ctx.fillRect(0, 0, t, t);
-    for (let i = 0; i < 5000; i++) {
-      const g = 150 + Math.random() * 105;
-      ctx.fillStyle = `rgb(${g},${g},${g})`;
-      ctx.fillRect(Math.random() * t, Math.random() * t, 2, 3);
-    }
-  }, 40);
-
   const terreno = new THREE.Mesh(gTerreno, new THREE.MeshStandardMaterial({
-    vertexColors: true, map: texTierra, roughness: 1
+    vertexColors: true, roughness: 1
   }));
+  texturarSuelo(gTerreno, terreno.material, texturas, tema, TAM);   // arena en la playa, tierra mas arriba
   terreno.receiveShadow = true;
   scene.add(terreno);
 
@@ -114,6 +107,7 @@ export async function crearMundo(scene, gltfLoader, tema = TEMAS[0]) {
     mar.position.y = agua.nivel;
     mar.receiveShadow = true;
     scene.add(mar);
+    animables.push(texturarAgua(mar.material, texturas.agua, 60));
     const baseMar = gMar.attributes.position.array.slice();
     animables.push((t) => {
       const p = gMar.attributes.position;
@@ -125,6 +119,7 @@ export async function crearMundo(scene, gltfLoader, tema = TEMAS[0]) {
     estanque.position.x = OASIS.x;
     estanque.position.z = OASIS.z;
     scene.add(estanque);
+    animables.push(texturarAgua(estanque.material, texturas.agua, 4));
   }
 
   // ====== TEXTURA DE PIEDRA (ruinas y rocas)

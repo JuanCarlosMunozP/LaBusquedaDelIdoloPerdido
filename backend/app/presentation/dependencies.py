@@ -6,6 +6,7 @@ from app.application.supply_registry import GrantLedger, SupplyRunRegistry
 from app.core.config import settings
 from app.core.security import constant_time_equals, hash_session_token
 from app.domain.entities.session import UserSession
+from app.domain.multiplayer import RoomRegistry
 from app.infrastructure.repositories import (
     SqlAuditRepository,
     SqlInventoryRepository,
@@ -13,7 +14,7 @@ from app.infrastructure.repositories import (
     SqlSessionRepository,
     SqlUserRepository,
 )
-from app.infrastructure.session import get_db
+from app.infrastructure.session import SessionLocal, get_db
 
 
 def _is_trusted_proxy(host: str | None) -> bool:
@@ -75,6 +76,19 @@ def get_supply_registry() -> SupplyRunRegistry:
 
 def get_grant_ledger() -> GrantLedger:
     return _grant_ledger
+
+
+# Salas del multijugador (en memoria, ver domain/multiplayer.py). Los tests lo reemplazan con dependency_overrides.
+_room_registry = RoomRegistry()
+
+
+def get_room_registry() -> RoomRegistry:
+    return _room_registry
+
+
+def get_session_factory():
+    """Fabrica de sesiones de BD: el WebSocket abre una, busca la sesion del jugador y la cierra enseguida."""
+    return SessionLocal
 
 
 def get_inventory_repository(db: Session = Depends(get_db)) -> SqlInventoryRepository:

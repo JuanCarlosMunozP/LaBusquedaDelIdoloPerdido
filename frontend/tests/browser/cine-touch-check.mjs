@@ -113,7 +113,7 @@ try {
   }
   assert.equal(errors.length, 0, 'sin errores de consola, ejecucion o red');
   assert.ok(models.some(model => model.url.includes('daniel.glb')));
-  assert.ok(models.some(model => model.url.includes('palmera.glb')));
+  assert.ok(models.some(model => model.url.includes('palm-tree.glb')));
   assert.ok(models.some(model => model.url.includes('idolo.glb')));
   assert.ok(models.every(model => model.status === 200));
   console.log(JSON.stringify({ passed: true, mode: touch ? 'touch-emulated' : 'desktop', version, steps, models, errors, warnings, profile }));

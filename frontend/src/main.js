@@ -16,6 +16,9 @@ import { crearInventario } from './juego/inventario.js';
 import { crearObjetosSueltos } from './juego/soltar.js';
 import { ARMAS } from './personajes/armas.js';
 import { cargarReglas } from './juego/reglas.js';
+import { pedirModo } from './interfaz/modalModo.js';
+import { pedirSala } from './interfaz/modalSala.js';
+import { crearPartida } from './multijugador/partida.js';
 import { crearPanelInventario } from './interfaz/panelInventario.js';
 import { crearCinematicaAvion } from './escenario/cinematica.js';
 import { crearCinematicaPlaya } from './escenario/cinematicaPlaya.js';
@@ -94,7 +97,19 @@ const jugador = {
 
 inventario.ligar(jugador);               // el arma de la mano y la mochila se guardan juntas
 const suministros = crearSuministros({ scene, sonido, jugador, inventario });   // botiquines y kits de arma al azar
-const frio = crearFrio();               // barras de frio y calor (solo en la montaña)
+const partida = crearPartida({            // multijugador: sala de hasta 4 jugadores con cuenta (multijugador/partida.js)
+  scene,
+  avisar: (texto) => decir(texto, 4),
+  crearHumano: () => { const h = new Humano(clonarModelo(modeloEnemigo)); h.personalizarCabelloAxel(); h.vestir(VESTUARIO_AXEL); return h; },
+  foto: () => ({
+    x: jugador.pos.x, y: jugador.pos.y, z: jugador.pos.z, ry: axel.direccion, nadando: jugador.nadando,
+    golpe: axel.golpeT >= 0, vida: Math.round(jugador.vida), arma: jugador.arma?.id ?? "",
+    sombrero: inventario.sombrero === "puesto", nivel
+  }),
+  corregir: (x, y, z) => jugador.pos.set(x, y, z)       // el servidor rechazo una posicion imposible
+});
+let codigoSala = null;
+const frio = crearFrio();             // barras de frio y calor (solo en la montaña)
 const vista = crearVista(scene, camera);   // camara en tercera persona (camara.js)
 let tiempo = 0;
 let pasoAnterior = 0;
@@ -205,7 +220,15 @@ cajaDialogo.addEventListener("pointerdown", () => { if (tactil) hablarSiEstaCerc
 // Al cambiar de pestaña o apagar la pantalla, el juego se pausa solo
 document.addEventListener("visibilitychange", () => { if (document.hidden && estado === "jugando") pausar(); });
 
+let modoElegido = null;                     // "solo" | "multi": se pregunta al pulsar Jugar por primera vez
 hud.boton.addEventListener("click", () => {
+  if (estado === "inicio" && !modoElegido) {
+    pedirModo({ multijugador: true }).then(async (m) => {
+      if (m === "multi") codigoSala = await pedirSala({ conCuenta: cuenta.inventarioConCuenta() });   // sin cuenta no hay sala
+      if (m && (m === "solo" || codigoSala)) { modoElegido = m; hud.boton.click(); }
+    });
+    return;
+  }
   if (estado === "inicio" || estado === "pausa") {
     if (dispositivo.tactil) pantallaCompleta();
     sonido.iniciar();
@@ -213,6 +236,7 @@ hud.boton.addEventListener("click", () => {
     hud.pantalla.classList.add("oculta");
     hud.ui.classList.remove("oculta");
     bloquearRaton();
+    if (codigoSala && !partida.activa) partida.conectar(codigoSala);
     if (!window.__bienvenida) {
       window.__bienvenida = true;
       decir("Habla con Daniel (T) para recibir tus misiones.", 5);
@@ -800,6 +824,7 @@ function animar() {
     if (estado === "jugando") {
       tiempoFinal += dt;
       actualizarJugador(dt);
+      partida.actualizar(dt, tiempo, nivel);   // manda mi estado y mueve a los demas jugadores
     } else if (axel) {
       axel.actualizar(dt, 0, true, tiempo); // Axel respira en el menu
     }

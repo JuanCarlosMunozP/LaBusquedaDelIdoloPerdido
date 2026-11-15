@@ -139,6 +139,7 @@ export const efectosSfx = {
   chapoteo(fuerza = 1) {
     if (!this.ctx) return;
     const f = Math.max(0.2, Math.min(1.6, fuerza));
+    this.trozoMuestra("golpes", { dur: 0.9 + 0.8 * f, vol: 0.45 * f });   // agua real, si ya cargo
     // el cuerpo golpeando el agua: un golpe grave y una columna de agua
     this.barrido({ f0: 170, f1: 55, dur: 0.22, vol: 0.45 * f, reverb: 0.15 });
     this.ruidoFiltrado({ tipo: "lowpass", f0: 700, f1: 200, dur: 0.3, vol: 0.5 * f, ataque: 0.004 });
@@ -161,6 +162,7 @@ export const efectosSfx = {
     if (!this.ctx) return;
     this.ladoBrazada = -(this.ladoBrazada || 1);
     const pan = this.ladoBrazada * 0.3;
+    this.trozoMuestra("nadar", { dur: 0.7, vol: 0.4, pan });              // brazada real, si ya cargo
     this.ruidoFiltrado({ tipo: "bandpass", f0: azar(420, 600), f1: azar(1100, 1600), q: 1.1, dur: 0.5, vol: 0.3, ataque: 0.11, pan, reverb: 0.12 });
     this.ruidoFiltrado({ tipo: "lowpass", f0: 1800, f1: 600, dur: 0.07, vol: 0.12, ataque: 0.004, pan });    // la mano entra al agua
     this.ruidoFiltrado({ buffer: this.ruidoBlanco, tipo: "highpass", f0: 4500, dur: 0.14, vol: 0.05, ataque: 0.03, retraso: 0.05, pan });

@@ -1,6 +1,7 @@
 // Sonido del juego. Todo se sintetiza con Web Audio (no hay archivos),
 // asi la carpeta public/sounds queda libre para los sonidos definitivos.
 import { efectosSfx } from './sfx.js';
+import { efectosMuestras } from './muestras.js';
 
 export class Sonido {
   constructor() {
@@ -28,6 +29,7 @@ export class Sonido {
     this.crearFuego();
     this.crearOasis();
     this.crearMusica();
+    this.cargarMuestrasAgua();   // sonidos reales de agua, en segundo plano (muestras.js)
   }
 
   crearRuido() {
@@ -58,6 +60,7 @@ export class Sonido {
     filtro.frequency.value = 500;
     const ganancia = ctx.createGain();
     ganancia.gain.value = 0.25;
+    this.gOceanoSint = ganancia;     // se baja cuando llega la muestra real (muestras.js)
 
     // Las olas suben y bajan lento
     const lfo = ctx.createOscillator();
@@ -404,4 +407,4 @@ export class Sonido {
 }
 
 // agua, pasos, saltos, golpes, disparos y objetos (en sfx.js)
-Object.assign(Sonido.prototype, efectosSfx);
+Object.assign(Sonido.prototype, efectosSfx, efectosMuestras);

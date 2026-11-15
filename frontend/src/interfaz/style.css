@@ -195,3 +195,47 @@ canvas { display: block; }
   min-width: 22px; padding: 1px 6px; border-radius: 5px; background: rgba(0, 0, 0, 0.35); color: inherit;
   font: 700 12px monospace; text-align: center;
 }
+
+/* ---- ventana "¿Cómo quieres jugar?" */
+#modal-modo {
+  position: fixed; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center;
+  background: rgba(8, 5, 7, 0.78); padding: 16px;
+}
+.modal-caja {
+  width: min(460px, 100%); padding: 22px 22px 18px; border-radius: 16px; color: #f3e8dc;
+  background: rgba(22, 14, 18, 0.97); border: 1px solid rgba(255, 190, 110, 0.5);
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+.modal-caja h2 { margin: 0 0 10px; font-size: 22px; color: #ffc27a; }
+.modal-caja p { margin: 0 0 14px; font-size: 15px; line-height: 1.5; color: rgba(255, 255, 255, 0.82); }
+.modal-opcion {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 3px; width: 100%; margin: 8px 0;
+  padding: 12px 14px; border-radius: 12px; border: 1px solid rgba(255, 190, 110, 0.45);
+  background: rgba(255, 194, 122, 0.12); color: #ffd98a; font: 600 16px "Segoe UI", Arial, sans-serif; cursor: pointer; text-align: left;
+}
+.modal-opcion span { font-weight: 400; font-size: 13.5px; color: rgba(255, 255, 255, 0.75); }
+.modal-opcion:hover:not(:disabled), .modal-opcion:focus-visible { background: #ffc27a; color: #2a1204; outline: none; }
+.modal-opcion:hover:not(:disabled) span, .modal-opcion:focus-visible span { color: #4a2a10; }
+.modal-opcion:disabled { opacity: 0.45; cursor: not-allowed; }
+.modal-volver {
+  display: block; margin: 12px 0 0 auto; padding: 8px 16px; border-radius: 10px; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.25); background: transparent; color: #ddd; font: 14px "Segoe UI", Arial, sans-serif;
+}
+.modal-volver:hover, .modal-volver:focus-visible { background: rgba(255, 255, 255, 0.12); outline: none; }
+
+/* multijugador: campo del codigo de sala */
+#modal-modo .modal-codigo {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  margin: 8px 0;
+  font: inherit;
+  font-size: 1.2rem;
+  letter-spacing: 0.3em;
+  text-align: center;
+  text-transform: uppercase;
+  border-radius: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+}

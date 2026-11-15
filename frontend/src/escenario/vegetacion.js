@@ -5,7 +5,7 @@ import { altura, OASIS } from './terreno.js';
 // Coloca todo en la escena y registra los troncos en `obstaculos` para las colisiones.
 export async function crearVegetacion({ scene, gltfLoader, tema, rnd, obstaculos, fogata, matMadera, sombra }) {
   // ====== PALMERAS (modelo hecho en Blender)
-  const palmera = (await gltfLoader.loadAsync("/models/palmera.glb?v=" + Date.now())).scene;
+  const palmera = (await gltfLoader.loadAsync("/textures/palm-tree.glb?v=" + Date.now())).scene;
   // Palmeras, pinos y cactus son InstancedMesh: todos los de un tipo comparten geometria y material,
   // asi que cada parte (tronco, hojas, conos...) se dibuja en una sola llamada y no una por arbol.
   // `modelo` = grupo plantilla; `instancias(modelo)` guarda las matrices de cada copia colocada.

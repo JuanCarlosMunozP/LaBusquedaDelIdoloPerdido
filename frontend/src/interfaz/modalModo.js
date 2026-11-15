@@ -28,6 +28,7 @@ const resultadoPrivado = detectarModoPrivado();      // se calcula una sola vez,
 
 // Muestra la ventana y devuelve "solo" | "multi" | null (si la cierran o esta bloqueado).
 export async function pedirModo({ multijugador = false } = {}) {
+  if (document.getElementById("modal-modo")) return null;     // ya hay una abierta (doble clic)
   const privado = debeBloquear(await resultadoPrivado);
   const m = modeloModal({ privado, multijugador });
   return new Promise((resolver) => {
