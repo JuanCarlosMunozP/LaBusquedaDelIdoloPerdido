@@ -3,7 +3,7 @@
 import * as THREE from 'three';
 import { Humano, DURACION_GOLPE, INSTANTE_IMPACTO } from './personaje.js';
 import { armaAleatoria, equiparArma, zonaDeBala } from './armas.js';
-import { amortiguar } from './ayudas.js';
+import { amortiguar, suave } from './ayudas.js';
 
 const VELOCIDAD_BALA = 26;
 const previo = new THREE.Vector3(), punto = new THREE.Vector3();   // temporales reutilizados al mover las balas
@@ -35,6 +35,8 @@ export class Enemigo {
     this.golpeT = -1;           // cuenta regresiva del ataque
     this.golpeAplicado = false;
     this.velocidad = 0;
+    this.vel = new THREE.Vector2();   // velocidad real (suavizada): arranca y frena sin saltos
+    this.nadando = false;
     this.tiempoMuerto = 0;
     this.quitar = false;
     this.humano.grupo.position.copy(this.pos);
@@ -155,13 +157,19 @@ export class Enemigo {
     const dist = Math.hypot(dx, dz);
     this.cooldown -= dt;
 
+    // en el agua nada (mas despacio, y sin poder atacar ni disparar, igual que Max)
+    const agua = this.mundo.agua;
+    this.nadando = agua ? agua.contiene(p.x, p.z, this.nadando) : false;
+    const nadar = this.nadando ? Math.min(1.7, agua.velocidad.nadar * 0.75) : 0;
+    const marcha = this.nadando ? Math.min(1.4, nadar) : 1.4, carrera = this.nadando ? nadar : 3.4;
+
     // ---- decidir estado
     if (this.estado !== "ataca" && this.estado !== "dispara") {
       const vision = A.tipo === "pistola" ? 14 : 10;
       if (jugador.vivo && dist < vision) this.estado = "persigue";
       else if (this.estado === "persigue" && (dist > vision + 7 || !jugador.vivo)) this.estado = "patrulla";
     }
-    if (this.estado === "persigue" && this.cooldown <= 0) {
+    if (this.estado === "persigue" && this.cooldown <= 0 && !this.nadando) {
       if (A.tipo === "pistola") {
         if (dist < A.rango && jugador.vivo) {        // apunta, dispara y baja el arma
           this.estado = "dispara";
@@ -191,15 +199,15 @@ export class Enemigo {
         if (this.mundo.esAgua(this.objetivo.x, this.objetivo.y)) this.objetivo.copy(this.casa);
         this.espera = 1 + Math.random() * 2.5;
       } else {
-        vx = (tx / d) * 1.4;
-        vz = (tz / d) * 1.4;
+        vx = (tx / d) * marcha;
+        vz = (tz / d) * marcha;
       }
     } else if (this.estado === "persigue") {
       // con pistola se queda a media distancia; cuerpo a cuerpo se acerca hasta el alcance
       const parar = A.tipo === "pistola" ? A.distancia : A.alcance * 0.8;
       if (dist > parar) {
-        vx = (dx / dist) * 3.4;
-        vz = (dz / dist) * 3.4;
+        vx = (dx / dist) * carrera;
+        vz = (dz / dist) * carrera;
       }
       h.mirarHacia(Math.atan2(dx, dz), dt);
     } else if (this.estado === "ataca") {
@@ -229,20 +237,30 @@ export class Enemigo {
 
     if (this.estado === "patrulla" && (vx || vz)) h.mirarHacia(Math.atan2(vx, vz), dt);
 
-    // ---- mover (con empuje de los golpes recibidos)
-    const nx = p.x + (vx + this.empuje.x) * dt;
-    const nz = p.z + (vz + this.empuje.y) * dt;
+    // ---- mover (con empuje de los golpes recibidos). La velocidad real se acerca a la deseada en
+    // ~0.1 s: arrancar y frenar ya no es instantaneo y los pies siguen al suelo.
+    const kv = 1 - Math.exp(-dt * 9);
+    this.vel.x += (vx - this.vel.x) * kv;
+    this.vel.y += (vz - this.vel.y) * kv;
+    const nx = p.x + (this.vel.x + this.empuje.x) * dt;
+    const nz = p.z + (this.vel.y + this.empuje.y) * dt;
     this.empuje.multiplyScalar(Math.max(0, 1 - dt * 8));
-    if (!this.mundo.esAgua(nx, nz)) { p.x = nx; p.z = nz; }
+    // al agua solo entra persiguiendo (o si ya esta en ella), sin salir del mapa
+    const puedePasar = !this.mundo.esAgua(nx, nz) || (agua && this.mundo.dentroDelMapa(nx, nz) && (this.estado === "persigue" || this.nadando));
+    if (puedePasar) { p.x = nx; p.z = nz; }
     this.mundo.resolver(p, 0.4);
-    p.y = this.mundo.altura(p.x, p.z);
+    if (this.nadando) p.y += (agua.superficie(p.x, p.z, tiempo) - agua.flotacion - p.y) * Math.min(1, dt * 14);   // flota sobre la ola
+    else p.y = this.mundo.altura(p.x, p.z);
 
     this.velocidad = Math.hypot(vx, vz);
-    // Solo para la animacion: la velocidad de los pasos sube y baja suavemente. El movimiento real
-    // (arriba) no cambia: antes la zancada saltaba de 1.4 a 3.4 m/s en un cuadro al empezar a perseguir.
-    this.velAnim = amortiguar(this.velAnim ?? this.velocidad, this.velocidad, 1 - Math.exp(-dt * 8));
+    // Solo para la animacion: sale de la velocidad real, y al caminar o correr se exagera un poco la
+    // zancada (a 1.4 m/s los pasos eran diminutos y lentos, y parecia que se deslizaba tieso).
+    const real = Math.hypot(this.vel.x, this.vel.y);
+    const zancada = 1 + 0.7 * suave(0.2, 1.2, real) * (1 - suave(1.6, 3.4, real)) + 0.35 * suave(2.0, 3.4, real);
+    const animacion = this.nadando ? real : real * zancada;
+    this.velAnim = amortiguar(this.velAnim ?? animacion, animacion, 1 - Math.exp(-dt * 12));
     h.grupo.position.copy(p);
-    if (h.activo !== false) h.actualizar(dt, this.velAnim, true, tiempo);   // fuera de camara no se anima (solo se mueve)
+    if (h.activo !== false) h.actualizar(dt, this.velAnim, true, tiempo, 0, this.nadando && agua.tipo);   // fuera de camara no se anima (solo se mueve)
   }
 }
 
@@ -277,7 +295,7 @@ export function separarEnemigos(enemigos, jugador, mundo) {
     }
   }
   for (const e of vivos) {
-    e.pos.y = mundo.altura(e.pos.x, e.pos.z);
+    if (!e.nadando) e.pos.y = mundo.altura(e.pos.x, e.pos.z);   // nadando, la altura la fija la ola
     e.humano.grupo.position.copy(e.pos);
   }
 }
@@ -285,7 +303,7 @@ export function separarEnemigos(enemigos, jugador, mundo) {
 // desplaza a un mercenario sin meterlo al agua ni dentro de arboles o rocas
 function mover(e, dx, dz, mundo) {
   const x = e.pos.x + dx, z = e.pos.z + dz;
-  if (mundo.esAgua(x, z)) return;
+  if (mundo.esAgua(x, z) && !e.nadando) return;
   e.pos.x = x;
   e.pos.z = z;
   mundo.resolver(e.pos, 0.4);

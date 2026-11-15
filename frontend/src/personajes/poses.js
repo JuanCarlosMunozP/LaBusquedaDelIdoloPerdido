@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { suave } from './ayudas.js';
 import { ARTICULACIONES, DURACION_GOLPE } from './constantes.js';
 import { avanzarFase } from './mezcla.js';
+import { crearPosesNado } from './posesNado.js';
 
 // Variantes del reposo (duracion en segundos)
 const VARIANTES_REPOSO = [
@@ -446,3 +447,6 @@ export const posesHumano = {
     ctx.bob = 0;
   },
 };
+
+// estilos de nado extra (flotar, braza lenta, crol rapido, espalda): ver posesNado.js
+Object.assign(posesHumano, crearPosesNado(posesHumano));

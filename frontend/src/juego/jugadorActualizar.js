@@ -57,6 +57,8 @@ function moverJugador(dt) {
     if (teclas["arrowdown"]) vista.pitch = Math.min(1.15, vista.pitch + 1.2 * dt);
     if (g.tactil) { ix += g.tactil.mov.x; iz += g.tactil.mov.y; }     // joystick en pantalla
   }
+  // nadar hacia atras (hacia la camara) = nadar de espaldas
+  jugador.nadoAtras = jugador.nadando && iz < -0.3 && Math.abs(ix) < Math.abs(iz) * 0.5;
 
   const dir = _dir.set(0, 0)
     .addScaledVector(adelante, iz)
@@ -127,9 +129,10 @@ function actualizarAnimacionJugador(dt) {
     if (jugador.golpePendiente >= 0 || g.axel.golpeT >= 0) {
       g.axel.mirarHacia(vista.yaw + Math.PI, dt, 18); // al pelear mira hacia donde apunta la camara
     } else if (velocidadH > 0.3) {
-      g.axel.mirarHacia(Math.atan2(jugador.vel.x, jugador.vel.z), dt);
+      g.axel.mirarHacia(Math.atan2(jugador.vel.x, jugador.vel.z) + (jugador.nadoAtras ? Math.PI : 0), dt);   // de espaldas mira al lado contrario del avance
     }
   }
+  g.axel.nadoAtras = jugador.nadoAtras;
   g.axel.grupo.position.copy(jugador.pos);
   g.axel.actualizar(dt, velocidadH, jugador.enSuelo, g.tiempo, jugador.vy, jugador.nadando && g.mundo.agua.tipo,   // "mar" = crol, "oasis" = braza
       // sombrero: lo decide el inventario (no en la montaña; se lo pone tras la cinematica)

@@ -40,6 +40,7 @@ export const jugador = {
   golpePendiente: -1,
   heridasT: 0,
   nadando: false,
+  nadoAtras: false,     // nada de espaldas (avanza hacia la camara)
   arma: null,           // arma de un kit (null = puños)
   municion: 0
 };

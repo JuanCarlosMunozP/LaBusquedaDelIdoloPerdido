@@ -3,7 +3,9 @@
 // estado tiene un peso que sube o baja de forma gradual y las poses se mezclan ponderadas.
 // Es logica pura (sin Three.js ni el modelo) para poder probarla por separado.
 
-export const ESTADOS_BASE = ["reposo", "caminar", "aire", "nado", "nadoOasis"];
+// nado: crol en el mar | nadoOasis: braza del estanque | flotar: pataleo en el sitio |
+// nadoBraza: braza lenta en el mar | nadoRapido: crol fuerte | nadoEspalda: nada boca arriba
+export const ESTADOS_BASE = ["reposo", "caminar", "aire", "nado", "nadoOasis", "flotar", "nadoBraza", "nadoRapido", "nadoEspalda"];
 
 // Metodo de `posesHumano` (poses.js) que calcula cada estado.
 export const POSE_DE_ESTADO = {
@@ -11,7 +13,11 @@ export const POSE_DE_ESTADO = {
   caminar: "poseCaminar",
   aire: "poseAire",
   nado: "poseNado",
-  nadoOasis: "poseNadoOasis"
+  nadoOasis: "poseNadoOasis",
+  flotar: "poseFlotar",
+  nadoBraza: "poseNadoBraza",
+  nadoRapido: "poseNadoRapido",
+  nadoEspalda: "poseNadoEspalda"
 };
 
 // Un estado con menos peso que esto no se calcula (ahorra trabajo cuando ya casi no se nota).
@@ -47,4 +53,24 @@ export function avanzarFase(fase, dt, frecuencia) {
   const vuelta = Math.PI * 2;
   const f = (fase || 0) + dt * frecuencia;
   return ((f % vuelta) + vuelta) % vuelta;
+}
+
+// Estilo de nado segun el agua, la velocidad y si se avanza de espaldas. `previo` es el estilo del
+// cuadro anterior: cada umbral tiene histeresis (HISTERESIS m/s) para que una velocidad que oscila
+// justo en el limite no haga parpadear el estilo. `agua` es "mar" | "oasis".
+const HISTERESIS = 0.18;
+const UMBRALES = {
+  flotar: 0.4,                 // por debajo se queda en el sitio
+  mar: { braza: 1.9, rapido: 2.9 },
+  oasis: { rapido: 2.3 }       // en el estanque la braza es el nado normal
+};
+
+export function estadoDeNado(agua, velocidad, atras = false, previo = null) {
+  if (velocidad < UMBRALES.flotar + (previo === "flotar" ? HISTERESIS : 0)) return "flotar";
+  if (atras) return "nadoEspalda";
+  if (agua === "oasis") return velocidad > UMBRALES.oasis.rapido - (previo === "nadoRapido" ? HISTERESIS : 0) ? "nadoRapido" : "nadoOasis";
+  const { braza, rapido } = UMBRALES.mar;
+  if (velocidad > rapido - (previo === "nadoRapido" ? HISTERESIS : 0)) return "nadoRapido";
+  if (velocidad < braza + (previo === "nadoBraza" ? HISTERESIS : 0)) return "nadoBraza";
+  return "nado";
 }

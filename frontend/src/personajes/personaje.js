@@ -6,7 +6,7 @@ import { amortiguar, suave } from './ayudas.js';
 import { ARTICULACIONES, DURACION_GOLPE, INSTANTE_IMPACTO } from './constantes.js';
 import { posesHumano } from './poses.js';
 import {
-  ESTADOS_BASE, POSE_DE_ESTADO, PESO_MINIMO, TASA_MEZCLA, TASA_MEZCLA_AIRE, crearPesos, actualizarPesos
+  ESTADOS_BASE, POSE_DE_ESTADO, PESO_MINIMO, TASA_MEZCLA, TASA_MEZCLA_AIRE, crearPesos, actualizarPesos, estadoDeNado
 } from './mezcla.js';
 export { DURACION_GOLPE, INSTANTE_IMPACTO };
 
@@ -245,7 +245,9 @@ export class Humano {
     const ctx = this.#prepararCuadro(dt, velocidad, enSuelo, tiempo, velocidadVertical, nadando);
 
     // movimiento base: se elige el estado y las poses se MEZCLAN gradualmente (sin saltos)
-    const estado = nadando === "oasis" ? "nadoOasis" : nadando ? "nado" : !enSuelo ? "aire" : ctx.A > 0.05 ? "caminar" : "reposo";
+    // al nadar, el estilo (flotar, braza, crol, crol rapido, espalda) lo decide la velocidad (ver mezcla.js)
+    if (nadando) this.estadoNado = estadoDeNado(nadando, velocidad, !!this.nadoAtras, this.estadoNado);
+    const estado = nadando ? this.estadoNado : !enSuelo ? "aire" : ctx.A > 0.05 ? "caminar" : "reposo";
     this.#mezclarPoseBase(ctx, estado);
 
     // capas que se suman encima, en este orden
@@ -384,9 +386,10 @@ export class Humano {
       this.rollNado = amortiguar(this.rollNado || 0, ctx.roll || 0, kn);
       this.cabeceoNado = amortiguar(this.cabeceoNado || 0, ctx.cabeceo || 0, kn);
       // descansando: tumbado boca arriba (escena final en la cama)
-      this.cuerpo.rotation.x = this.nado * (nadando === "oasis" ? 1.35 : 1.45) + this.cabeceoNado - (this.descansando || this.tendido ? Math.PI / 2 : 0);   // en el oasis va mas incorporado
+      const inclinacion = this.nado * (nadando === "oasis" ? 1.35 : 1.45) + this.cabeceoNado;   // en el oasis va mas incorporado
+      this.cuerpo.rotation.x = inclinacion - (this.descansando || this.tendido ? Math.PI / 2 : 0);
       this.cuerpo.rotation.y = this.rollNado;      // giro sobre el eje del cuerpo tendido = balanceo al nadar
-      this.cuerpo.position.z = -0.85 * this.nado;
+      this.cuerpo.position.z = -0.85 * this.nado * THREE.MathUtils.clamp(Math.sin(inclinacion) / 0.99, -1, 1);   // centra el cuerpo tendido (o de pie al flotar) sobre el grupo
     }
 
     // caida al morir (solo la inclinacion; la altura la fija el anclaje al suelo)
