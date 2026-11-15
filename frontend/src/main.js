@@ -1,3 +1,4 @@
+import './interfaz/bloqueoPrivado.js';   // primero: en modo privado bloquea el juego (ver el archivo)
 import { clone as clonarModelo } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { Humano, VESTUARIO_AXEL } from './personajes/personaje.js';
 import { separarEnemigos } from './personajes/enemigo.js';
