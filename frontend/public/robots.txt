@@ -1,0 +1,6 @@
+# La Búsqueda del Ídolo Perdido
+# Permite el rastreo de toda la página y declara el sitemap.
+User-agent: *
+Allow: /
+
+Sitemap: https://labusquedadelidoloperdido-1.onrender.com/sitemap.xml

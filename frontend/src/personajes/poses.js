@@ -6,16 +6,20 @@
 import * as THREE from 'three';
 import { suave } from './ayudas.js';
 import { ARTICULACIONES, DURACION_GOLPE } from './constantes.js';
+import { avanzarFase } from './mezcla.js';
 
 export const posesHumano = {
   // Braza en el estanque del oasis.
   poseNadoOasis(ctx) {
-    const { velocidad, tiempo, o } = ctx;
+    const { velocidad, dt, o } = ctx;
     // braza en el estanque: tranquila y con la cabeza fuera. Los brazos se estiran al frente, se
     // abren en arco, se recogen bajo el pecho y vuelven a salir; las piernas se encogen y patean
     // como rana. En el sitio solo chapotea suave.
     const f = 0.4 + 0.6 * Math.min(velocidad / 1.9, 1);
-    const p = tiempo * (1.1 + 0.6 * Math.min(velocidad / 1.9, 1));
+    // fase acumulada (en ciclos): si dependiera de `tiempo * frecuencia`, cada cambio de velocidad
+    // haria saltar los brazos a otra posicion de la brazada
+    this.faseOasis = avanzarFase(this.faseOasis, dt, (1.1 + 0.6 * Math.min(velocidad / 1.9, 1)) * Math.PI * 2) / (Math.PI * 2);
+    const p = this.faseOasis;
     const abre = Math.max(0, Math.sin(Math.PI * 2 * p));      // brazos abiertos en arco
     const recoge = Math.max(0, -Math.sin(Math.PI * 2 * p));   // codos recogidos bajo el pecho
     for (const [nom, fuera, codo] of [["I", 1, -1], ["D", -1, 1]]) {   // fuera = signo que aleja el brazo del cuerpo
@@ -31,6 +35,8 @@ export const posesHumano = {
     }
     o.torso[0] = -0.08;
     o.cabeza[0] = -0.7;                       // mira al frente, fuera del agua
+    ctx.roll = 0.04 * Math.sin(Math.PI * 2 * p) * f;   // leve balanceo de lado a lado con cada braceo
+    ctx.cabeceo = -0.04 * (1 - f);                      // casi vertical cuando se queda en el sitio
     ctx.bob = Math.sin(Math.PI * 2 * p) * 0.025;
   },
 
@@ -38,15 +44,20 @@ export const posesHumano = {
   poseNado(ctx) {
     const { velocidad, tiempo, o } = ctx;
     // crol: brazos que giran alternados, patada de tijera y cuerpo tendido sobre el agua
-    const brazada = tiempo * (3.2 + 1.6 * Math.min(velocidad / 3, 1));
+    // fase acumulada: ver poseNadoOasis (evita el salto de brazada al cambiar de velocidad)
+    this.faseNado = avanzarFase(this.faseNado, ctx.dt, 3.2 + 1.6 * Math.min(velocidad / 3, 1));
+    const brazada = this.faseNado;
     const f = 0.45 + 0.55 * Math.min(velocidad / 2.5, 1);   // en el sitio, brazadas mas suaves
     for (const [lado, nom, ph] of [[-1, "I", brazada], [1, "D", brazada + Math.PI]]) {
       const fase = Math.cos(ph), recobro = Math.max(0, Math.sin(ph));
       o["hombro_" + nom][0] = (-1.35 - 1.5 * fase) * f - 0.2 * (1 - f);
       o["hombro_" + nom][2] = lado * (0.12 + 0.18 * recobro);
-      o["codo_" + nom][1] = lado * (0.12 + 1.0 * recobro) * f;
+      // al tirar del agua (fuera del recobro) el codo se dobla un poco: agarra el agua en vez de empujarla recta
+      const traccion = Math.max(0, -Math.sin(ph));
+      o["codo_" + nom][1] = lado * (0.12 + 1.0 * recobro + 0.3 * traccion) * f;
     }
-    const patada = Math.sin(tiempo * 12);
+    const vf = Math.min(velocidad / 2.5, 1);                  // 0 = chapoteando en el sitio, 1 = nadando fuerte
+    const patada = Math.sin(tiempo * 12) * (0.55 + 0.45 * vf);   // la patada se afloja al ir despacio
     o.muslo_I[0] = 0.12 + 0.28 * patada;
     o.muslo_D[0] = 0.12 - 0.28 * patada;
     o.rodilla_I[0] = 0.18 + 0.2 * Math.max(0, -patada);
@@ -54,7 +65,12 @@ export const posesHumano = {
     o.torso[1] = 0.28 * Math.cos(brazada) * f;
     o.cabeza[0] = -0.85;                     // levanta la cara para mirar al frente
     o.cabeza[1] = -0.28 * Math.cos(brazada) * f;
-    ctx.bob = Math.sin(brazada * 2) * 0.02;
+    // cuerpo entero (lo aplica Humano en #inclinarCuerpo): se balancea con la brazada en el mismo
+    // sentido que el giro del torso, sube y baja con cada brazada, y va mas vertical (las piernas
+    // se hunden) cuando casi no avanza, como alguien que se mantiene a flote
+    ctx.roll = 0.16 * Math.cos(brazada) * f;
+    ctx.cabeceo = -0.16 * (1 - vf) + 0.035 * Math.sin(brazada * 2) * vf;
+    ctx.bob = Math.sin(brazada * 2) * 0.04 * (0.4 + 0.6 * vf);
   },
 
   // Salto o caida: piernas y brazos sueltos en el aire.

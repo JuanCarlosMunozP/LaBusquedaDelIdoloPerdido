@@ -5,6 +5,9 @@ import { aparienciaHumano } from './apariencia.js';
 import { amortiguar, suave } from './ayudas.js';
 import { ARTICULACIONES, DURACION_GOLPE, INSTANTE_IMPACTO } from './constantes.js';
 import { posesHumano } from './poses.js';
+import {
+  ESTADOS_BASE, POSE_DE_ESTADO, PESO_MINIMO, TASA_MEZCLA, TASA_MEZCLA_AIRE, crearPesos, actualizarPesos
+} from './mezcla.js';
 export { DURACION_GOLPE, INSTANTE_IMPACTO };
 
 // falanges de cada dedo, para cerrar el puño
@@ -94,6 +97,7 @@ export class Humano {
     this._e = new THREE.Euler();
 
     this.fase = 0;
+    this.pesosBase = crearPesos();   // peso de cada pose base (ver mezcla.js)
     this.golpeT = -1;       // progreso del golpe (0..1), -1 = sin golpear
     this.brazoGolpe = "D";
     this.enSueloAnterior = true;
@@ -234,12 +238,9 @@ export class Humano {
     this.colocarSombrero(this.descansando ? "oculto" : nadando && sombrero === "cabeza" ? "mano" : sombrero);
     const ctx = this.#prepararCuadro(dt, velocidad, enSuelo, tiempo, velocidadVertical, nadando);
 
-    // movimiento base (uno solo)
-    if (nadando === "oasis") this.#calcularPose(ctx, posesHumano.poseNadoOasis);
-    else if (nadando) this.#calcularPose(ctx, posesHumano.poseNado);
-    else if (!enSuelo) this.#calcularPose(ctx, posesHumano.poseAire);
-    else if (ctx.A > 0.05) this.#calcularPose(ctx, posesHumano.poseCaminar);
-    else this.#calcularPose(ctx, posesHumano.poseReposo);
+    // movimiento base: se elige el estado y las poses se MEZCLAN gradualmente (sin saltos)
+    const estado = nadando === "oasis" ? "nadoOasis" : nadando ? "nado" : !enSuelo ? "aire" : ctx.A > 0.05 ? "caminar" : "reposo";
+    this.#mezclarPoseBase(ctx, estado);
 
     // capas que se suman encima, en este orden
     if (this.impactoAterrizaje > 0) this.#calcularPose(ctx, posesHumano.ajusteAterrizaje);
@@ -260,6 +261,38 @@ export class Humano {
     pose.call(this, ctx);
   }
 
+  // Calcula cada pose base con peso suficiente en un buffer aparte y las suma ponderadas en
+  // ctx.o / ctx.bob. En regimen estable un solo estado pesa ~1, asi que el resultado es el mismo
+  // de antes; la diferencia esta solo en las transiciones, que ahora duran ~0.3 s en vez de saltar.
+  #mezclarPoseBase(ctx, estado) {
+    actualizarPesos(this.pesosBase, estado, ctx.dt, estado === "aire" ? TASA_MEZCLA_AIRE : TASA_MEZCLA);
+    const real = ctx.o;
+    const tmp = this._poseTmp || (this._poseTmp = Object.fromEntries(ARTICULACIONES.map((n) => [n, [0, 0, 0]])));
+    let total = 0;
+    for (const e of ESTADOS_BASE) if (this.pesosBase[e] >= PESO_MINIMO) total += this.pesosBase[e];
+    let bob = 0, roll = 0, cabeceo = 0;
+    for (const e of ESTADOS_BASE) {
+      const w = this.pesosBase[e];
+      if (w < PESO_MINIMO) continue;
+      const peso = w / total;
+      for (const n of ARTICULACIONES) { const r = tmp[n]; r[0] = r[1] = r[2] = 0; }
+      ctx.o = tmp;
+      ctx.bob = 0; ctx.roll = 0; ctx.cabeceo = 0;
+      posesHumano[POSE_DE_ESTADO[e]].call(this, ctx);
+      for (const n of ARTICULACIONES) {
+        const r = real[n], t = tmp[n];
+        r[0] += peso * t[0]; r[1] += peso * t[1]; r[2] += peso * t[2];
+      }
+      bob += peso * ctx.bob;
+      roll += peso * ctx.roll;
+      cabeceo += peso * ctx.cabeceo;
+    }
+    ctx.o = real;
+    ctx.bob = bob;
+    ctx.roll = roll;
+    ctx.cabeceo = cabeceo;
+  }
+
   // Deja listo el cuadro: rotaciones objetivo en cero, parpadeo, aterrizaje y fase de la zancada.
   // Los arreglos se reutilizan cada cuadro (sin basura para el recolector).
   #prepararCuadro(dt, velocidad, enSuelo, tiempo, velocidadVertical, nadando) {
@@ -272,6 +305,8 @@ export class Humano {
     punoObj.I = punoObj.D = 0.3;       // manos relajadas salvo al pelear
     for (const n of ARTICULACIONES) { const r = o[n]; r[0] = r[1] = r[2] = 0; }
     ctx.bob = 0;
+    ctx.roll = 0;       // balanceo del cuerpo entero al nadar (rad)
+    ctx.cabeceo = 0;    // inclinacion extra del cuerpo al nadar (rad, negativo = mas vertical)
     this.actualizarParpadeo(dt);
     if (!enSuelo) this.impactoAterrizaje = 0;
     else if (!this.enSueloAnterior) this.impactoAterrizaje = 0.18;
@@ -318,8 +353,14 @@ export class Humano {
 
     // nadar: el cuerpo se tiende boca abajo sobre el agua
     if (!this.muerto) {
+      // balanceo y cabeceo del nado (ya vienen mezclados por peso, asi que valen 0 fuera del agua);
+      // se suavizan para que entrar o salir del agua no los haga saltar
+      const kn = Math.min(1, dt * 8);
+      this.rollNado = amortiguar(this.rollNado || 0, ctx.roll || 0, kn);
+      this.cabeceoNado = amortiguar(this.cabeceoNado || 0, ctx.cabeceo || 0, kn);
       // descansando: tumbado boca arriba (escena final en la cama)
-      this.cuerpo.rotation.x = this.nado * (nadando === "oasis" ? 1.35 : 1.45) - (this.descansando || this.tendido ? Math.PI / 2 : 0);   // en el oasis va mas incorporado
+      this.cuerpo.rotation.x = this.nado * (nadando === "oasis" ? 1.35 : 1.45) + this.cabeceoNado - (this.descansando || this.tendido ? Math.PI / 2 : 0);   // en el oasis va mas incorporado
+      this.cuerpo.rotation.y = this.rollNado;      // giro sobre el eje del cuerpo tendido = balanceo al nadar
       this.cuerpo.position.z = -0.85 * this.nado;
     }
 
@@ -330,6 +371,7 @@ export class Humano {
       const giro = (Math.PI / 2) * caida, lado = this.ladoCaida || 1;
       const tipo = this.tipoCaida;
       this.cuerpo.rotation.x = tipo === "atras" ? -giro : tipo === "adelante" ? giro : 0;
+      this.cuerpo.rotation.y = 0;
       this.cuerpo.rotation.z = tipo === "lado" ? lado * giro : 0;
     }
   }
