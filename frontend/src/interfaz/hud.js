@@ -33,7 +33,7 @@ fundido.style.cssText = "position:fixed;inset:0;background:#000;opacity:0;pointe
   "transition:opacity .6s;z-index:5";
 document.body.appendChild(fundido);
 
-// ---- dialogo con Daniel (tecla E)
+// ---- dialogo con Daniel (tecla T)
 export const cajaDialogo = document.createElement("div");
 cajaDialogo.style.cssText = "position:fixed;left:50%;bottom:9%;transform:translateX(-50%);width:min(720px,88vw);" +
   "padding:14px 20px;border-radius:14px;background:rgba(22,14,18,.86);border:1px solid rgba(255,190,110,.45);" +
@@ -44,14 +44,14 @@ document.body.appendChild(cajaDialogo);
 export const avisoHablar = document.createElement("div");
 avisoHablar.style.cssText = "position:fixed;left:50%;bottom:22%;transform:translateX(-50%);padding:6px 16px;" +
   "border-radius:20px;background:rgba(22,14,18,.75);color:#ffd98a;font-size:15px;z-index:3;display:none";
-avisoHablar.textContent = "Pulsa E para hablar con Daniel";
+avisoHablar.textContent = "Pulsa T para hablar con Daniel";
 document.body.appendChild(avisoHablar);
 
 export function mostrarLinea({ lineas, i }) {
   const [quien, texto] = Array.isArray(lineas[i]) ? lineas[i] : ["Daniel", lineas[i]];
   const color = quien === "Max" ? "#9fd0ff" : "#ffc27a";
   cajaDialogo.innerHTML = `<b style="color:${color}">${quien}</b><br>${texto}` +
-    `<div style="text-align:right;font-size:13px;color:#aaa;margin-top:6px">${dispositivo.tactil ? "Toca" : "E"} · ${i < lineas.length - 1 ? "continuar" : "aceptar misión"}</div>`;
+    `<div style="text-align:right;font-size:13px;color:#aaa;margin-top:6px">${dispositivo.tactil ? "Toca" : "T"} · ${i < lineas.length - 1 ? "continuar" : "aceptar misión"}</div>`;
   cajaDialogo.style.display = "block";
 }
 export function cerrarDialogo() {

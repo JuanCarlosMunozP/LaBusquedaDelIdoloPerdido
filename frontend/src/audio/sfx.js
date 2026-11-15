@@ -267,6 +267,13 @@ export const efectosSfx = {
     this.ruidoFiltrado({ tipo: "lowpass", f0: 500, dur: 0.1, vol: 0.2 });
   },
 
+  // Ponerse o guardar el sombrero, o cambiar de arma: tela que roza y un toque suave de objeto
+  equipar() {
+    if (!this.ctx) return;
+    this.ruidoFiltrado({ tipo: "bandpass", f0: azar(1400, 1900), f1: 900, q: 0.7, dur: 0.16, vol: 0.14, ataque: 0.04 });
+    this.ruidoFiltrado({ tipo: "lowpass", f0: 500, dur: 0.06, vol: 0.12, retraso: 0.1 });
+  },
+
   // Recoger un botiquin: la tela y el plastico, y una nota suave que reconforta
   recogerBotiquin() {
     if (!this.ctx) return;

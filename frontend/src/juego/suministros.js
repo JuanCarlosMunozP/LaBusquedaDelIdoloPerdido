@@ -12,7 +12,7 @@ const AVISO = 10;         // parpadea los ultimos segundos antes de desaparecer
 const MAX_POR_TIPO = 6;   // para no llenar el mapa si Max no los recoge
 const BALAS = 10;
 
-export function crearSuministros({ scene, sonido, jugador }) {
+export function crearSuministros({ scene, sonido, jugador, inventario }) {
   const items = [];       // { tipo, obj, x, y, z, edad }
   let reloj = CADA;
 
@@ -59,11 +59,18 @@ export function crearSuministros({ scene, sonido, jugador }) {
 
   function tomarArma(axel) {
     const arma = armaDeKit();
+    const guardada = inventario?.guardarActual(jugador);      // la que llevaba va a la mochila
     jugador.arma = arma.id === "puños" ? null : arma;
     jugador.municion = arma.tipo === "pistola" ? BALAS : 0;
-    equiparArma(axel, arma);
-    axel.apuntando = arma.tipo === "pistola" ? 1 : 0;     // con pistola lleva el brazo extendido
-    decir(`Kit de arma: ${arma.id}`, 3);
+    sincronizarArma(axel);
+    decir(guardada ? `Kit de arma: ${arma.id} (la anterior va a la mochila)` : `Kit de arma: ${arma.id}`, 3);
+  }
+
+  // Muestra en la mano de Max el arma que dice `jugador` (tras recoger, cambiar o guardar desde el inventario)
+  function sincronizarArma(axel) {
+    const arma = jugador.arma;
+    equiparArma(axel, arma ?? { crear: null });
+    axel.apuntando = arma?.tipo === "pistola" ? 1 : 0;     // con pistola lleva el brazo extendido
     pintarPanel();
   }
 
@@ -116,5 +123,5 @@ export function crearSuministros({ scene, sonido, jugador }) {
     }
   }
 
-  return { actualizar, reiniciar, gastarBala, quitarArma };
+  return { actualizar, reiniciar, gastarBala, quitarArma, sincronizarArma };
 }

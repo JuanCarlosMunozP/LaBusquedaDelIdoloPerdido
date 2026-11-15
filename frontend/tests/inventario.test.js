@@ -1,11 +1,62 @@
 import { describe, expect, it } from 'vitest';
-import { crearInventario } from '../src/juego/inventario.js';
+import { crearInventario, MAX_MOCHILA } from '../src/juego/inventario.js';
 
 const memoria = (inicial = {}) => {
   const d = { ...inicial };
   return { getItem: (k) => (k in d ? d[k] : null), setItem: (k, v) => { d[k] = String(v); }, d };
 };
 const CON = { tiene: true, permitido: true };
+
+const bate = { id: 'bate', tipo: 'cuerpo' };
+const pistola = { id: 'pistola', tipo: 'pistola' };
+const cuchillo = { id: 'cuchillo', tipo: 'cuerpo' };
+
+describe('inventario: mochila de armas', () => {
+  it('guardar el arma de la mano la mueve a la mochila y deja los puños', () => {
+    const inv = crearInventario(memoria()), j = { arma: pistola, municion: 7 };
+    expect(inv.guardarEnMano(j)).toBe(true);
+    expect(j).toEqual({ arma: null, municion: 0 });
+    expect(inv.mochila).toEqual([{ arma: pistola, municion: 7 }]);
+  });
+
+  it('sin arma no hay nada que guardar', () => {
+    const inv = crearInventario(memoria());
+    expect(inv.guardarEnMano({ arma: null, municion: 0 })).toBe(false);
+    expect(inv.mochila).toHaveLength(0);
+  });
+
+  it('cambiar intercambia mano y mochila conservando las balas', () => {
+    const inv = crearInventario(memoria()), j = { arma: pistola, municion: 4 };
+    inv.mochila.push({ arma: bate, municion: 0 });
+    expect(inv.cambiarArma(j, 0)).toBe(true);
+    expect(j).toEqual({ arma: bate, municion: 0 });
+    expect(inv.mochila).toEqual([{ arma: pistola, municion: 4 }]);
+  });
+
+  it('con los puños, sacar un arma la quita de la mochila', () => {
+    const inv = crearInventario(memoria()), j = { arma: null, municion: 0 };
+    inv.mochila.push({ arma: bate, municion: 0 });
+    inv.cambiarArma(j, 0);
+    expect(j.arma).toBe(bate);
+    expect(inv.mochila).toHaveLength(0);
+  });
+
+  it('un indice inexistente no cambia nada', () => {
+    const inv = crearInventario(memoria()), j = { arma: bate, municion: 0 };
+    expect(inv.cambiarArma(j, 2)).toBe(false);
+    expect(j.arma).toBe(bate);
+  });
+
+  it('la mochila tiene limite: guardar a mano no la desborda y recoger pierde la mas vieja', () => {
+    const inv = crearInventario(memoria());
+    for (const a of [bate, pistola, cuchillo]) inv.guardarActual({ arma: a, municion: 1 });
+    expect(inv.mochila).toHaveLength(MAX_MOCHILA);
+    expect(inv.guardarEnMano({ arma: bate, municion: 0 })).toBe(false);
+    inv.guardarActual({ arma: bate, municion: 0 });
+    expect(inv.mochila).toHaveLength(MAX_MOCHILA);
+    expect(inv.mochila[0].arma).toBe(pistola);
+  });
+});
 
 describe('inventario: sombrero', () => {
   it('por defecto lo lleva puesto una vez que lo tiene', () => {

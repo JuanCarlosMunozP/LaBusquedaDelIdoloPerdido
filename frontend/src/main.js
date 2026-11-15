@@ -13,6 +13,7 @@ import { crearFrio } from './juego/frio.js';
 import { resolverGolpe, dispararJugador } from './juego/combate.js';
 import { crearSuministros } from './juego/suministros.js';
 import { crearInventario } from './juego/inventario.js';
+import { crearPanelInventario } from './interfaz/panelInventario.js';
 import { crearCinematicaAvion } from './escenario/cinematica.js';
 import { crearCinematicaPlaya } from './escenario/cinematicaPlaya.js';
 import { gestionarPersonajes, crearResolucionDinamica } from './juego/detalle.js';
@@ -86,7 +87,7 @@ const jugador = {
   municion: 0
 };
 
-const suministros = crearSuministros({ scene, sonido, jugador });   // botiquines y kits de arma al azar
+const suministros = crearSuministros({ scene, sonido, jugador, inventario });   // botiquines y kits de arma al azar
 const frio = crearFrio();               // barras de frio y calor (solo en la montaña)
 const vista = crearVista(scene, camera);   // camara en tercera persona (camara.js)
 let tiempo = 0;
@@ -104,8 +105,10 @@ window.addEventListener("keydown", (e) => {
   teclas[k] = true;
   if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(k)) e.preventDefault();
   if (estado === "jugando" && (k === "f" || k === "j") && !dialogo) atacar();
-  if (estado === "jugando" && k === "e" && jugador.vivo && daniel &&
-      (dialogo || Math.hypot(jugador.pos.x - danielPos.x, jugador.pos.z - danielPos.z) < 3.6)) hablarConDaniel();
+  if (estado === "jugando" && k === "t") hablarSiEstaCerca();           // T: hablar con Daniel
+  if (k === "e" && !e.repeat) {                                          // E: inventario (abre y cierra)
+    if (estado === "inventario") cerrarInventario(); else abrirInventario();
+  } else if (estado === "inventario") teclaInventario(k);
   if (k === "r" && (estado === "victoria" || estado === "derrota")) location.reload();
 });
 window.addEventListener("keyup", (e) => { teclas[e.key.toLowerCase()] = false; });
@@ -140,6 +143,46 @@ function pausar() {
   hud.pantalla.classList.remove("oculta");
 }
 
+// ---- inventario (tecla T): el juego queda en pausa mientras esta abierto
+const datosInventario = () => ({
+  tieneSombrero: nivel > 0 || cinematicasVistas.has(0),
+  sombreroPermitido: mundo.tema.sombrero !== false
+});
+const accionesInventario = {
+  sombrero: () => { inventario.alternarSombrero(); sonido.equipar(); panelInventario.actualizar(datosInventario()); },
+  guardarArma: () => {
+    if (inventario.guardarEnMano(jugador)) { suministros.sincronizarArma(axel); sonido.equipar(); }
+    panelInventario.actualizar(datosInventario());
+  },
+  cambiarArma: (i) => {
+    if (inventario.cambiarArma(jugador, i)) { suministros.sincronizarArma(axel); sonido.equipar(); }
+    panelInventario.actualizar(datosInventario());
+  },
+  cerrar: () => cerrarInventario()
+};
+const panelInventario = crearPanelInventario(inventario, jugador, accionesInventario);
+
+function abrirInventario() {
+  if (estado !== "jugando" || !jugador.vivo || dialogo || cambiandoNivel || !axel) return;
+  estado = "inventario";                  // antes de soltar el raton, para que no se tome como una pausa
+  document.exitPointerLock?.();
+  panelInventario.abrir(datosInventario());
+}
+
+function cerrarInventario() {
+  if (estado !== "inventario") return;
+  panelInventario.cerrar();
+  estado = "jugando";
+  bloquearRaton();                        // si el navegador lo impide, un clic lo recupera
+}
+
+function teclaInventario(k) {
+  if (k === "escape") cerrarInventario();
+  else if (k === "h" && datosInventario().tieneSombrero) accionesInventario.sombrero();
+  else if (k === "g") accionesInventario.guardarArma();
+  else if (k >= "1" && k <= "9") accionesInventario.cambiarArma(Number(k) - 1);
+}
+
 // ---- controles tactiles (solo moviles y tabletas)
 function hablarSiEstaCerca() {
   if (estado !== "jugando" || !jugador.vivo || !daniel) return;
@@ -148,7 +191,8 @@ function hablarSiEstaCerca() {
 const tactil = dispositivo.tactil ? crearControlesTactiles(vista, {
   atacar: () => { if (estado === "jugando" && !dialogo) atacar(); },
   hablar: hablarSiEstaCerca,
-  pausar: () => { if (estado === "jugando") pausar(); }
+  pausar: () => { if (estado === "jugando") pausar(); },
+  inventario: () => { if (estado === "inventario") cerrarInventario(); else abrirInventario(); }
 }) : null;
 cajaDialogo.addEventListener("pointerdown", () => { if (tactil) hablarSiEstaCerca(); });   // tocar el cuadro avanza el dialogo
 
@@ -165,7 +209,7 @@ hud.boton.addEventListener("click", () => {
     bloquearRaton();
     if (!window.__bienvenida) {
       window.__bienvenida = true;
-      decir("Habla con Daniel (E) para recibir tus misiones.", 5);
+      decir("Habla con Daniel (T) para recibir tus misiones.", 5);
     }
   } else if (estado === "victoria" || estado === "derrota") {
     location.reload();
@@ -312,7 +356,7 @@ function crearMaxInconsciente() {
   return max;
 }
 
-// ---- dialogo con Daniel (tecla E)
+// ---- dialogo con Daniel (tecla T)
 function hablarConDaniel() {
   if (!dialogo) {
     const lineas = misionesAceptadas
@@ -654,7 +698,7 @@ function actualizarObjetivosJugador(dt, velocidadH) {
     sonido.recoger();
     decir("¡Objetivos cumplidos! " + mundo.tema.salidaTexto, 7);
   }
-  pintarObjetivos(misionesAceptadas ? lista : [["Habla con Daniel (E) para recibir tus misiones", false]]);
+  pintarObjetivos(misionesAceptadas ? lista : [["Habla con Daniel (T) para recibir tus misiones", false]]);
 }
 
 function actualizarIndicadoresJugador(dt) {

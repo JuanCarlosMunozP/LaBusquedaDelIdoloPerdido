@@ -13,7 +13,7 @@ function crear(etiqueta, clase, texto, props = {}) {
   return e;
 }
 
-// vista = { yaw, pitch }; acciones = { atacar, hablar, pausar }
+// vista = { yaw, pitch }; acciones = { atacar, hablar, pausar, inventario }
 export function crearControlesTactiles(vista, acciones) {
   const estado = { mov: { x: 0, y: 0 }, correr: false, saltar: false, activo: false };
 
@@ -28,11 +28,13 @@ export function crearControlesTactiles(vista, acciones) {
   const btnSalto = crear("button", "tactil-boton tactil-salto", "SALTAR", { type: "button" });
   const btnHablar = crear("button", "tactil-boton tactil-hablar oculta", "HABLAR", { type: "button" });
   const btnPausa = crear("button", "tactil-pausa", "II", { type: "button" });
+  const btnMochila = crear("button", "tactil-mochila", "BAG", { type: "button" });
+  btnMochila.setAttribute("aria-label", "Inventario");
   btnPausa.setAttribute("aria-label", "Pausa");
   btnGolpe.setAttribute("aria-label", "Golpear o disparar");
   btnSalto.setAttribute("aria-label", "Saltar");
   btnHablar.setAttribute("aria-label", "Hablar con Daniel");
-  raiz.append(zona, base, btnGolpe, btnSalto, btnHablar, btnPausa);
+  raiz.append(zona, base, btnGolpe, btnSalto, btnHablar, btnMochila, btnPausa);
   document.body.appendChild(raiz);
 
   // ---- joystick y camara: un dedo por funcion
@@ -106,6 +108,7 @@ export function crearControlesTactiles(vista, acciones) {
   pulsar(btnSalto, () => { estado.saltar = true; }, () => { estado.saltar = false; });
   pulsar(btnHablar, () => acciones.hablar());
   pulsar(btnPausa, () => acciones.pausar());
+  pulsar(btnMochila, () => acciones.inventario?.());
 
   return Object.assign(estado, {
     // se muestran solo mientras se juega (no en menus, pausa ni cinematicas)

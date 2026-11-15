@@ -103,7 +103,7 @@ describe('cadena de salida', () => {
 
   it('sin audio iniciado no falla ni hace nada', () => {
     const s = new Sonido();
-    for (const f of ['chapoteo', 'brazada', 'paso', 'salto', 'aterrizaje', 'golpe', 'impacto', 'disparo', 'recogerArma', 'recogerBotiquin']) {
+    for (const f of ['chapoteo', 'brazada', 'paso', 'salto', 'aterrizaje', 'golpe', 'impacto', 'disparo', 'recogerArma', 'recogerBotiquin', 'equipar']) {
       expect(() => s[f]()).not.toThrow();
     }
   });
@@ -135,7 +135,8 @@ describe('cada efecto es valido para el navegador', () => {
     'impacto bate': (s) => s.impacto('bate'),
     disparo: (s) => s.disparo(),
     'recoger arma': (s) => s.recogerArma(),
-    'recoger botiquin': (s) => s.recogerBotiquin()
+    'recoger botiquin': (s) => s.recogerBotiquin(),
+    'equipar sombrero o arma': (s) => s.equipar()
   };
 
   it.each(Object.entries(efectos))('%s: sin errores, con nodos y volumen acotado (40 repeticiones)', (_n, tocar) => {

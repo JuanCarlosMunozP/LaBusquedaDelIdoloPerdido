@@ -6,6 +6,7 @@
 //   arma:     la que lleva en la mano (jugador.arma) | mochila: armas que guardo para cambiarlas despues
 const CLAVE = "idolo.inventario.v1";
 const ESTADOS = ["puesto", "guardado"];
+export const MAX_MOCHILA = 3;
 
 function almacen() {
   try { return globalThis.localStorage || null; } catch { return null; }
@@ -22,8 +23,40 @@ export function crearInventario(storage = almacen()) {
     try { storage?.setItem(CLAVE, JSON.stringify({ sombrero })); } catch { /* modo privado: solo dura la partida */ }
   };
 
+  // Mochila: armas guardadas { arma, municion }. No se guarda entre partidas (como el arma en la mano).
+  const mochila = [];
+
   return {
     get sombrero() { return sombrero; },
+    mochila,
+
+    // Guarda en la mochila el arma que lleva `jugador` (si lleva alguna). Si esta llena, se pierde la mas vieja.
+    guardarActual(jugador) {
+      if (!jugador.arma) return false;
+      mochila.push({ arma: jugador.arma, municion: jugador.municion });
+      while (mochila.length > MAX_MOCHILA) mochila.shift();
+      jugador.arma = null;
+      jugador.municion = 0;
+      return true;
+    },
+
+    // Cambia el arma en la mano por la que esta en `indice` de la mochila (la actual ocupa su lugar).
+    cambiarArma(jugador, indice) {
+      const nueva = mochila[indice];
+      if (!nueva) return false;
+      const actual = jugador.arma ? { arma: jugador.arma, municion: jugador.municion } : null;
+      if (actual) mochila[indice] = actual; else mochila.splice(indice, 1);
+      jugador.arma = nueva.arma;
+      jugador.municion = nueva.municion;
+      return true;
+    },
+
+    // Guarda el arma de la mano y deja los puños libres
+    guardarEnMano(jugador) {
+      return mochila.length < MAX_MOCHILA && this.guardarActual(jugador);
+    },
+
+    vaciarMochila() { mochila.length = 0; },
 
     // Poner o guardar el sombrero. Devuelve el estado final.
     fijarSombrero(estado) {

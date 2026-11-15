@@ -1,4 +1,4 @@
-// Piezas comunes de las cinematicas: subtitulos, "E · saltar", particulas simples y la posicion
+// Piezas comunes de las cinematicas: subtitulos, "T · saltar", particulas simples y la posicion
 // lejana (ORIGEN) donde se arman para no mezclarse con el nivel.
 import * as THREE from 'three';
 import { fundido } from '../interfaz/hud.js';
@@ -30,14 +30,14 @@ export function interfazCine(subtitulos) {
   document.body.appendChild(caja);
   const aviso = document.createElement("div");
   aviso.style.cssText = "position:fixed;right:18px;bottom:14px;color:#ddd;font-size:13px;z-index:4";
-  aviso.textContent = tactil ? "Toca para saltar" : "E · saltar";
+  aviso.textContent = tactil ? "Toca para saltar" : "T · saltar";
   if (tactil) {                       // en el movil se toca la pantalla para saltar la cinematica
     aviso.style.cssText += ";padding:12px 18px;border-radius:20px;background:rgba(0,0,0,.55)";
     window.addEventListener("pointerdown", alTocar);
   }
   document.body.appendChild(aviso);
 
-  const alSaltar = (e) => { if (["e", "enter", " "].includes(e.key.toLowerCase())) ui.saltar = true; };
+  const alSaltar = (e) => { if (["t", "enter", " "].includes(e.key.toLowerCase())) ui.saltar = true; };
   window.addEventListener("keydown", alSaltar);
 
   ui.texto = (t) => {

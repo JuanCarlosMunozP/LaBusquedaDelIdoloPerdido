@@ -60,11 +60,20 @@ describe('RELEASE-005A: interfaz cinematográfica real (RF-001/002/006)', () => 
     for (const elemento of elementos) expect(elemento.remove).toHaveBeenCalledTimes(1);
     expect(h.elementos).toHaveLength(0);
     expect(h.fundido.style.opacity).toBe(0);
-    h.emitir('keydown', 'E'); h.emitir('pointerdown');
+    h.emitir('keydown', 'T'); h.emitir('pointerdown');
     expect(ui.saltar).toBe(false);
   });
 
-  it.each(['e', 'E', 'Enter', ' '])('CINE-003: escritorio permite saltar con %j', async (key) => {
+  it('CINE-003b: E ya no salta la cinematica (es el inventario)', async () => {
+    const h = await preparar(false);
+    const ui = h.interfazCine([]);
+    h.emitir('keydown', 'e');
+    expect(ui.saltar).toBe(false);
+    ui.cerrar();
+  });
+
+  // E abre el inventario, asi que saltar la cinematica (continuacion del dialogo) usa T
+  it.each(['t', 'T', 'Enter', ' '])('CINE-003: escritorio permite saltar con %j', async (key) => {
     const h = await preparar(false);
     const ui = h.interfazCine([]);
     h.emitir('pointerdown'); h.emitir('keydown', 'x');
