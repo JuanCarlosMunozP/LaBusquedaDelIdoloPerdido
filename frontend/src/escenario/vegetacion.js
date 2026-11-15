@@ -1,11 +1,16 @@
 // Vegetacion y detalles del suelo segun el bioma: palmeras y cocos, pinos, cactus y pasto.
 import * as THREE from 'three';
 import { altura, OASIS } from './terreno.js';
+import { dispositivo } from '../interfaz/dispositivo.js';
+import { VERSION_RECURSOS } from '../juego/version.js';
+
+// Cuanto de la vegetacion se dibuja segun la calidad (en movil se ve menos pasto y menos palmeras: son lo mas pesado del paisaje)
+const DENSIDAD = { alta: { palmas: 16, pasto: 1 }, media: { palmas: 9, pasto: 0.55 }, baja: { palmas: 6, pasto: 0.3 } }[dispositivo.calidad];
 
 // Coloca todo en la escena y registra los troncos en `obstaculos` para las colisiones.
 export async function crearVegetacion({ scene, gltfLoader, tema, rnd, obstaculos, fogata, matMadera, sombra }) {
   // ====== PALMERAS (modelo hecho en Blender)
-  const palmera = (await gltfLoader.loadAsync("/textures/palm-tree.glb?v=" + Date.now())).scene;
+  const palmera = (await gltfLoader.loadAsync("/textures/palm-tree.glb?v=" + VERSION_RECURSOS)).scene;
   // Palmeras, pinos y cactus son InstancedMesh: todos los de un tipo comparten geometria y material,
   // asi que cada parte (tronco, hojas, conos...) se dibuja en una sola llamada y no una por arbol.
   // `modelo` = grupo plantilla; `instancias(modelo)` guarda las matrices de cada copia colocada.
@@ -37,7 +42,7 @@ export async function crearVegetacion({ scene, gltfLoader, tema, rnd, obstaculos
   const colocarPalmera = palmas3d.colocar;
   let colocadas = 0;
   const palmas = [];
-  const maxPalmas = tema.tipo === "isla" ? 16 : 0;   // con el modelo detallado, menos palmeras (cada una es 5 veces mas pesada que la anterior)
+  const maxPalmas = tema.tipo === "isla" ? DENSIDAD.palmas : 0;   // con el modelo detallado, menos palmeras (cada una es 5 veces mas pesada que la anterior)
   for (let intento = 0; intento < 200 && colocadas < maxPalmas; intento++) {
     const a = rnd() * Math.PI * 2;
     const d = 14 + rnd() * 22;
@@ -160,7 +165,7 @@ export async function crearVegetacion({ scene, gltfLoader, tema, rnd, obstaculos
   {
     const gHoja = new THREE.ConeGeometry(0.035, 0.34, 3);
     gHoja.translate(0, 0.17, 0);
-    const n = tema.hierbaN;
+    const n = Math.round(tema.hierbaN * DENSIDAD.pasto);
     const pasto = new THREE.InstancedMesh(
       gHoja, new THREE.MeshStandardMaterial({ roughness: 1 }), n);
     const m = new THREE.Matrix4(), q = new THREE.Quaternion(), e = new THREE.Euler();

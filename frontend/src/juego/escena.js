@@ -3,8 +3,10 @@
 import * as THREE from 'three';
 import { crearResolucionDinamica } from './detalle.js';
 import { dispositivo, medidaVisible } from '../interfaz/dispositivo.js';
+import { fijarDetalleCabello } from '../personajes/cabello.js';
 
 // Computador: calidad alta. Movil/tableta: media. Raspberry Pi y equipos modestos: baja (ver dispositivo.js)
+fijarDetalleCabello(dispositivo.calidad);    // menos triangulos de pelo en movil (ver cabello.js)
 export const renderer = new THREE.WebGLRenderer({ antialias: dispositivo.antialias, powerPreference: "high-performance" });
 const medida = medidaVisible();
 renderer.setSize(medida.ancho, medida.alto);

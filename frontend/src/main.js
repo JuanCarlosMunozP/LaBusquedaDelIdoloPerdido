@@ -12,6 +12,7 @@ import * as cuenta from './cuenta/cuenta.js';
 import { iniciarDesdePortada } from './interfaz/portada.js';
 import { iniciarTutorial } from './interfaz/tutorial.js';
 import { dispositivo, pantallaCompleta } from './interfaz/dispositivo.js';
+import { VERSION_RECURSOS } from './juego/version.js';
 import { NIVELES } from './juego/datos.js';
 import { g, jugador, enemigos } from './juego/estadoJuego.js';
 import { renderer, scene, camera, resolucion, bloquearRaton } from './juego/escena.js';
@@ -70,7 +71,7 @@ async function entrarAlJuego() {
 }
 async function iniciar() {
   // La misma base de Mixamo conserva las proporciones; cada mercenario recibe rasgos propios.
-  const gAxel = await gltfLoader.loadAsync("/models/daniel.glb?v=" + Date.now());
+  const gAxel = await gltfLoader.loadAsync("/models/daniel.glb?v=" + VERSION_RECURSOS);
   g.modeloEnemigo = clonarModelo(gAxel.scene);
   g.axel = new Humano(gAxel.scene);
   g.axel.alMorir = soltarObjetosDeMax;

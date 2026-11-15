@@ -70,8 +70,15 @@ function trazarMechon(o) {
 }
 
 const ANILLO = 4;
-const ESCALA_ANCHO = 0.55;   // mechones finos y muchos: asi se lee como pelo y no como placas
-const REPETICIONES = 3;
+// Detalle del peinado: en computador 3 pasadas de mechones finos (~70 mil triangulos el de Axel); en movil
+// y equipos modestos menos pasadas con mechones mas anchos (cubren igual) y sin sombra propia.
+const DETALLES = {
+  alta: { repeticiones: 3, ancho: 0.55, sombra: true },
+  media: { repeticiones: 2, ancho: 0.8, sombra: false },
+  baja: { repeticiones: 1, ancho: 1.15, sombra: false }
+};
+let DETALLE = DETALLES.alta;
+export function fijarDetalleCabello(calidad) { DETALLE = DETALLES[calidad] ?? DETALLES.alta; }
 
 function cintaDeMechon(mechon, o, color, geo) {
   const { puntos, normales } = mechon;
@@ -85,7 +92,7 @@ function cintaDeMechon(mechon, o, color, geo) {
     const an = new THREE.Vector3().crossVectors(tg, nr).normalize(); // a lo ancho
     const nm = new THREE.Vector3().crossVectors(an, tg).normalize();  // hacia afuera
     // ancho: robusto en el centro, punta fina
-    const w = o.ancho * ESCALA_ANCHO * (0.7 + 0.5 * Math.sin(Math.PI * Math.min(1, s * 1.4))) * Math.max(0.04, 1 - Math.pow(s, o.afinado ?? 2.4));
+    const w = o.ancho * DETALLE.ancho * (0.7 + 0.5 * Math.sin(Math.PI * Math.min(1, s * 1.4))) * Math.max(0.04, 1 - Math.pow(s, o.afinado ?? 2.4));
     const t = o.grueso * Math.max(0.2, 1 - 0.7 * s);
     // las raices son mas oscuras (sombra del propio pelo)
     const sombra = 0.55 + 0.45 * Math.min(1, s * 1.6);
@@ -253,7 +260,7 @@ export function crearCabello(estilo, colorHex) {
 
   casquete(def.linea, color, geo, def.casco);
   const todos = [];
-  for (let i = 0; i < REPETICIONES; i++) todos.push(...def.mechones(r));
+  for (let i = 0; i < DETALLE.repeticiones; i++) todos.push(...def.mechones(r));
   for (const o of todos) {
     o.largo *= def.corte;      // que tan corto se lleva el peinado
     o.altura *= def.corte;
@@ -273,7 +280,7 @@ export function crearCabello(estilo, colorHex) {
   });
   const malla = new THREE.Mesh(g, mat);
   malla.name = "Cabello_" + estilo;
-  malla.castShadow = estilo === "axel";   // el pelo de los mercenarios (40 mil triangulos c/u) no proyecta sombra
+  malla.castShadow = estilo === "axel" && DETALLE.sombra;   // el pelo de los mercenarios (40 mil triangulos c/u) no proyecta sombra
   malla.frustumCulled = false;
   return malla;
 }

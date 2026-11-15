@@ -13,6 +13,7 @@ export const SECURITY_HEADERS = {
 };
 
 export default defineConfig({
+  define: { __BUILD_ID__: JSON.stringify(String(Date.now())) },   // version de los recursos para la cache (ver juego/version.js)
   server: {
     headers: SECURITY_HEADERS,
     proxy: {
