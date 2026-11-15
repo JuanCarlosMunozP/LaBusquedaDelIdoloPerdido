@@ -44,6 +44,23 @@ class GameProgressModel(Base):
     )
 
 
+class PlayerInventoryModel(Base):
+    __tablename__ = "player_inventory"
+    __table_args__ = (
+        CheckConstraint("hat_state IN ('puesto', 'guardado')", name="ck_inventory_hat_state"),
+    )
+
+    user_id: Mapped[str] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    hat_state: Mapped[str] = mapped_column(String(16), default="puesto", nullable=False)
+    equipped_json: Mapped[str] = mapped_column(Text, default="null", nullable=False)
+    backpack_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+
 class UserSessionModel(Base):
     __tablename__ = "user_sessions"
 

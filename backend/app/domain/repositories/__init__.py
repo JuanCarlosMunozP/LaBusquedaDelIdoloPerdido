@@ -1,6 +1,7 @@
 """Puertos (Interfaces abstractas) de repositorios de la capa de Dominio."""
 from abc import ABC, abstractmethod
 from app.domain.entities.user import User
+from app.domain.entities.inventory import PlayerInventory
 from app.domain.entities.progress import GameProgress
 from app.domain.entities.session import UserSession
 from app.domain.entities.audit_log import SecurityAuditLog
@@ -27,6 +28,16 @@ class AbstractProgressRepository(ABC):
 
     @abstractmethod
     def save(self, progress: GameProgress) -> GameProgress:
+        raise NotImplementedError
+
+
+class AbstractInventoryRepository(ABC):
+    @abstractmethod
+    def get_by_user_id(self, user_id: str) -> PlayerInventory | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def save(self, inventory: PlayerInventory) -> PlayerInventory:
         raise NotImplementedError
 
 

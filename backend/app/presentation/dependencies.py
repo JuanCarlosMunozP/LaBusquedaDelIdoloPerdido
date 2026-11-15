@@ -2,11 +2,13 @@ import ipaddress
 from fastapi import Cookie, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.application.supply_registry import GrantLedger, SupplyRunRegistry
 from app.core.config import settings
 from app.core.security import constant_time_equals, hash_session_token
 from app.domain.entities.session import UserSession
 from app.infrastructure.repositories import (
     SqlAuditRepository,
+    SqlInventoryRepository,
     SqlProgressRepository,
     SqlSessionRepository,
     SqlUserRepository,
@@ -62,6 +64,23 @@ def get_repositories(db: Session = Depends(get_db)):
     )
 
 
+# Estado en memoria del proceso (ver supply_registry.py). Los tests lo reemplazan con dependency_overrides.
+_supply_registry = SupplyRunRegistry()
+_grant_ledger = GrantLedger()
+
+
+def get_supply_registry() -> SupplyRunRegistry:
+    return _supply_registry
+
+
+def get_grant_ledger() -> GrantLedger:
+    return _grant_ledger
+
+
+def get_inventory_repository(db: Session = Depends(get_db)) -> SqlInventoryRepository:
+    return SqlInventoryRepository(db)
+
+
 def get_current_session(
     ideolo_session: str | None = Cookie(default=None, alias=settings.session_cookie_name),
     authorization: str | None = Header(default=None),
@@ -113,6 +132,24 @@ def require_csrf_protection(
             detail="Fallo de validación CSRF: discrepancia en cookie CSRF.",
         )
     return session
+
+
+def get_optional_session(
+    ideolo_session: str | None = Cookie(default=None, alias=settings.session_cookie_name),
+    authorization: str | None = Header(default=None),
+    x_csrf_token: str | None = Header(default=None, alias="X-CSRF-Token"),
+    ideolo_csrf: str | None = Cookie(default=None, alias=settings.csrf_cookie_name),
+    repos=Depends(get_repositories),
+) -> UserSession | None:
+    """
+    Para rutas que tambien usan los invitados: sin sesion valida devuelve None (juega como invitado).
+    Con sesion valida exige CSRF igual que el resto de operaciones que modifican algo.
+    """
+    try:
+        session = get_current_session(ideolo_session, authorization, repos)
+    except HTTPException:
+        return None
+    return require_csrf_protection(session, x_csrf_token, ideolo_csrf)
 
 
 def require_admin_access(

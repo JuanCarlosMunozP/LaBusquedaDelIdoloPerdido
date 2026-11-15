@@ -1,19 +1,16 @@
-from typing import Any
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Query, Request, Response, status
-
+"""Registro, inicio y cierre de sesion; datos de la sesion actual."""
+from fastapi import Cookie, Depends, HTTPException, Request, Response, status, APIRouter
 from app.application.use_cases import (
     AuthenticateUserUseCase,
     GetProgressUseCase,
     RegisterUserUseCase,
     RevokeSessionUseCase,
-    UpdateProgressUseCase,
 )
 from app.core.config import settings
 from app.domain.entities.session import UserSession
 from app.domain.exceptions import (
     AccountLockedError,
     InvalidCredentialsError,
-    TamperDetectedError,
     UserAlreadyExistsError,
     ValidationError,
 )
@@ -22,18 +19,11 @@ from app.presentation.dependencies import (
     get_current_session,
     get_repositories,
     get_user_agent,
-    require_admin_access,
     require_csrf_protection,
 )
-from app.presentation.schemas import (
-    AuditLogEntryResponse,
-    AuthSuccessResponse,
-    CredentialsRequest,
-    ProgressPayload,
-    ProgressUpdateRequest,
-)
+from app.presentation.schemas import AuthSuccessResponse, CredentialsRequest, ProgressPayload
 
-api_router = APIRouter(prefix="/api/v1")
+router = APIRouter()
 
 
 def _set_auth_cookies(response: Response, opaque_token: str, csrf_token: str) -> None:
@@ -58,18 +48,7 @@ def _set_auth_cookies(response: Response, opaque_token: str, csrf_token: str) ->
     response.headers["X-CSRF-Token"] = csrf_token
 
 
-@api_router.get("/health", tags=["Health"])
-def health_check() -> dict[str, Any]:
-    return {
-        "status": "ok",
-        "service": settings.app_name,
-        "version": settings.app_version,
-        "target": settings.deploy_target,
-        "architecture": "clean-architecture",
-    }
-
-
-@api_router.post(
+@router.post(
     "/auth/register",
     response_model=AuthSuccessResponse,
     status_code=status.HTTP_201_CREATED,
@@ -107,7 +86,7 @@ def register_user(
     )
 
 
-@api_router.post("/auth/login", response_model=AuthSuccessResponse, tags=["IAM & Auth"])
+@router.post("/auth/login", response_model=AuthSuccessResponse, tags=["IAM & Auth"])
 def login_user(
     body: CredentialsRequest,
     request: Request,
@@ -145,7 +124,7 @@ def login_user(
     )
 
 
-@api_router.post("/auth/logout", tags=["IAM & Auth"])
+@router.post("/auth/logout", tags=["IAM & Auth"])
 def logout_user(
     request: Request,
     response: Response,
@@ -165,7 +144,7 @@ def logout_user(
     return {"ok": True}
 
 
-@api_router.get("/auth/me", response_model=AuthSuccessResponse, tags=["IAM & Auth"])
+@router.get("/auth/me", response_model=AuthSuccessResponse, tags=["IAM & Auth"])
 def current_user_info(
     request: Request,
     response: Response,
@@ -194,78 +173,3 @@ def current_user_info(
         ),
         aviso=progreso.aviso,
     )
-
-
-@api_router.get("/progress", response_model=ProgressPayload, tags=["Progress & Anti-Cheat"])
-def get_progress(
-    request: Request,
-    session: UserSession = Depends(get_current_session),
-    repos=Depends(get_repositories),
-) -> ProgressPayload:
-    user_repo, progress_repo, _, audit_repo = repos
-    uc = GetProgressUseCase(user_repo, progress_repo, audit_repo)
-    dto = uc.execute(
-        username=session.username,
-        ip_address=get_client_ip(request),
-        user_agent=get_user_agent(request),
-    )
-    return ProgressPayload(
-        nivel=dto.nivel,
-        mejorTiempo=dto.mejor_tiempo,
-        victorias=dto.victorias,
-    )
-
-
-@api_router.put("/progress", response_model=ProgressPayload, tags=["Progress & Anti-Cheat"])
-def update_progress(
-    body: ProgressUpdateRequest,
-    request: Request,
-    session: UserSession = Depends(require_csrf_protection),
-    repos=Depends(get_repositories),
-) -> ProgressPayload:
-    user_repo, progress_repo, _, audit_repo = repos
-    uc = UpdateProgressUseCase(user_repo, progress_repo, audit_repo)
-    try:
-        dto = uc.execute(
-            username=session.username,
-            requested_level=body.nivel,
-            victory_seconds=body.tiempoVictoria,
-            ip_address=get_client_ip(request),
-            user_agent=get_user_agent(request),
-        )
-    except ValidationError as exc:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
-    except TamperDetectedError as exc:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
-
-    return ProgressPayload(
-        nivel=dto.nivel,
-        mejorTiempo=dto.mejor_tiempo,
-        victorias=dto.victorias,
-    )
-
-
-@api_router.get(
-    "/security/audit-logs",
-    response_model=list[AuditLogEntryResponse],
-    tags=["Security Audit & Pentest Evidence"],
-)
-def list_security_audit_logs(
-    limit: int = Query(default=50, ge=1, le=200),
-    _admin_session: UserSession = Depends(require_admin_access),
-    repos=Depends(get_repositories),
-) -> list[AuditLogEntryResponse]:
-    _, _, _, audit_repo = repos
-    logs = audit_repo.list_recent(limit=limit)
-    return [
-        AuditLogEntryResponse(
-            id=item.id,
-            event_type=item.event_type,
-            username=item.username,
-            ip_address=item.ip_address,
-            user_agent=item.user_agent,
-            details=item.details,
-            created_at=item.created_at,
-        )
-        for item in logs
-    ]

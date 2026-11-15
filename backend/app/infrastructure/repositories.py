@@ -3,17 +3,20 @@ import json
 from sqlalchemy.orm import Session
 
 from app.domain.entities.audit_log import SecurityAuditLog
+from app.domain.entities.inventory import PlayerInventory, WeaponStack
 from app.domain.entities.progress import GameProgress
 from app.domain.entities.session import UserSession
 from app.domain.entities.user import User
 from app.domain.repositories import (
     AbstractAuditRepository,
+    AbstractInventoryRepository,
     AbstractProgressRepository,
     AbstractSessionRepository,
     AbstractUserRepository,
 )
 from app.infrastructure.models import (
     GameProgressModel,
+    PlayerInventoryModel,
     SecurityAuditLogModel,
     UserModel,
     UserSessionModel,
@@ -225,3 +228,51 @@ class SqlAuditRepository(AbstractAuditRepository):
             .all()
         )
         return [self._to_entity(r) for r in rows]
+
+
+class SqlInventoryRepository(AbstractInventoryRepository):
+    def __init__(self, db: Session):
+        self.db = db
+
+    @staticmethod
+    def _stack(raw: dict | None) -> WeaponStack | None:
+        if not isinstance(raw, dict):
+            return None
+        return WeaponStack(arma=raw.get("arma"), municion=raw.get("municion", 0))
+
+    @classmethod
+    def _to_entity(cls, model: PlayerInventoryModel) -> PlayerInventory:
+        try:
+            equipped = cls._stack(json.loads(model.equipped_json or "null"))
+            backpack = [cls._stack(i) for i in json.loads(model.backpack_json or "[]")]
+        except (ValueError, TypeError):
+            equipped, backpack = None, []
+        return PlayerInventory(
+            user_id=model.user_id,
+            hat_state=model.hat_state,
+            equipped=equipped,
+            backpack=[b for b in backpack if b is not None],
+            updated_at=model.updated_at,
+        )
+
+    def get_by_user_id(self, user_id: str) -> PlayerInventory | None:
+        row = self.db.query(PlayerInventoryModel).filter(PlayerInventoryModel.user_id == user_id).first()
+        return self._to_entity(row) if row else None
+
+    def save(self, inventory: PlayerInventory) -> PlayerInventory:
+        equipped = json.dumps(
+            {"arma": inventory.equipped.arma, "municion": inventory.equipped.municion}
+            if inventory.equipped else None
+        )
+        backpack = json.dumps([{"arma": i.arma, "municion": i.municion} for i in inventory.backpack])
+        row = self.db.query(PlayerInventoryModel).filter(PlayerInventoryModel.user_id == inventory.user_id).first()
+        if row is None:
+            row = PlayerInventoryModel(user_id=inventory.user_id)
+            self.db.add(row)
+        row.hat_state = inventory.hat_state
+        row.equipped_json = equipped
+        row.backpack_json = backpack
+        row.updated_at = inventory.updated_at
+        self.db.commit()
+        self.db.refresh(row)
+        return self._to_entity(row)
