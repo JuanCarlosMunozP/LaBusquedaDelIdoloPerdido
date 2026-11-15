@@ -17,10 +17,14 @@ describe('mezcla de arena y tierra del suelo', () => {
     expect(m).toBeLessThan(1);
   });
 
-  it('desierto es todo arena y la montaña pasa a tierra al subir', () => {
-    expect(mezclaSuelo(5, 5, 3, { tipo: 'desierto', desfase: 7 })).toBe(0);
-    const montana = { tipo: 'montana', desfase: 3 };
-    expect(mezclaSuelo(0, 0, 0, montana)).toBe(0);
-    expect(mezclaSuelo(0, 0, 2, montana)).toBe(1);
+  it('desierto y montaña: tambien tierra en el centro y arena solo en la orilla', () => {
+    for (const tipo of ['desierto', 'montana']) {
+      const tema = { tipo, desfase: 3 };
+      for (const h of [0, 2, 10]) expect(mezclaSuelo(5, 5, h, tema)).toBe(1);
+      expect(mezclaSuelo(56, 0, 2, tema)).toBe(0);
+      const medio = mezclaSuelo(46, 0, 2, tema);
+      expect(medio).toBeGreaterThan(0);
+      expect(medio).toBeLessThan(1);
+    }
   });
 });

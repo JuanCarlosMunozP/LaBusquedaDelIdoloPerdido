@@ -9,8 +9,7 @@ export const RUTAS_TEXTURAS = {
   tierra: "textures/dirt.png",
   agua: "textures/water.png"
 };
-const METROS_POR_BALDOSA = 4;      // arena del desierto y la montaña: cuanto suelo cubre una repeticion
-const REPETICIONES_ARENA = 1;      // arena de la isla: veces que se repite en TODO el mapa (1 = una sola imagen)
+const REPETICIONES_ARENA = 1;      // arena: veces que se repite en TODO el mapa (1 = una sola imagen, en los tres biomas)
 const REPETICIONES_TIERRA = 1;     // tierra: veces que se repite en TODO el mapa (1 = una sola imagen sobre todo el suelo, sin baldosas)
 
 let pendiente = null;
@@ -31,22 +30,19 @@ export function cargarTexturas(cargador = new THREE.TextureLoader(), base = impo
   return pendiente;
 }
 
-// Cuanto es tierra (1) y cuanto arena (0) en cada punto.
-//   isla: tierra en todo el centro y arena SOLO en la orilla (anillo alrededor de la isla), sin manchas por altura
-//   desierto: todo arena | montana: tierra al subir
+// Cuanto es tierra (1) y cuanto arena (0) en cada punto, igual en los tres biomas:
+// tierra en todo el centro y arena SOLO en la orilla (anillo exterior), sin depender de la altura.
+// [desde, hasta] = distancia al centro donde la tierra da paso a la arena.
+const ORILLA = { isla: [26, 34], montana: [40, 52], desierto: [40, 52] };
 export function mezclaSuelo(x, z, h, tema) {
-  const suave = THREE.MathUtils.smoothstep;
-  if (tema.tipo === "desierto") return 0;
-  if (tema.tipo === "isla") {
-    const borde = Math.hypot(x, z) + 1.6 * Math.sin(Math.atan2(z, x) * 5 + tema.desfase);   // orilla algo irregular
-    return 1 - suave(borde, 26, 34);
-  }
-  return suave(h, 0.3, 1.0);
+  const [desde, hasta] = ORILLA[tema.tipo] ?? ORILLA.isla;
+  const borde = Math.hypot(x, z) + 1.6 * Math.sin(Math.atan2(z, x) * 5 + tema.desfase);   // orilla algo irregular
+  return 1 - THREE.MathUtils.smoothstep(borde, desde, hasta);
 }
 
 // Pinta el terreno con arena y tierra mezcladas segun la altura. `geometria` ya tiene las alturas puestas.
 export function texturarSuelo(geometria, material, texturas, tema, tam) {
-  const repetir = tema.tipo === "isla" ? REPETICIONES_ARENA : tam / METROS_POR_BALDOSA;
+  const repetir = REPETICIONES_ARENA;
   const arena = texturas.arena ?? textura(256, (ctx, t) => {      // respaldo: la textura dibujada de antes
     ctx.fillStyle = "#e8e8e8";
     ctx.fillRect(0, 0, t, t);
@@ -66,7 +62,7 @@ export function texturarSuelo(geometria, material, texturas, tema, tam) {
   for (let i = 0; i < pos.count; i++) mezcla[i] = mezclaSuelo(pos.getX(i), pos.getZ(i), pos.getY(i), tema);
   geometria.setAttribute("mezcla", new THREE.BufferAttribute(mezcla, 1));
 
-  if (tema.tipo === "isla") {
+  if (tema.tipo !== "montana") {     // (la montaña conserva el color de la nieve)
     // la textura manda: sin el tinte de pasto/arena por altura (daba manchas ovaladas), solo un ruido leve de brillo
     const color = geometria.attributes.color;
     for (let i = 0; i < color.count; i++) {
@@ -83,7 +79,7 @@ export function texturarSuelo(geometria, material, texturas, tema, tam) {
       .replace("#include <common>", "#include <common>\nattribute float mezcla;\nvarying float vMezcla;")
       .replace("#include <begin_vertex>", "#include <begin_vertex>\nvMezcla = mezcla;");
     shader.fragmentShader = shader.fragmentShader
-      .replace("#include <common>", "#include <common>\nuniform sampler2D tierraMap;\nvarying float vMezcla;")
+      .replace("#include <common>", "#include <common>\nuniform sampler2D tierraMap;\nuniform float tierraEscala;\nvarying float vMezcla;")
       .replace("#include <map_fragment>",
         "diffuseColor *= mix(texture2D(map, vMapUv), texture2D(tierraMap, vMapUv * tierraEscala), vMezcla);");
   };
