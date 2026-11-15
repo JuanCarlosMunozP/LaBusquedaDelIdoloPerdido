@@ -129,3 +129,20 @@ export async function cerrarSesionEnServidor() {
   if (r.ok) csrfTokenMemoria = null;
   return r;
 }
+
+// ---- inventario persistente (sombrero, arma de la mano y mochila). El servidor valida las reglas.
+export async function cargarInventarioEnServidor() {
+  const r = await peticionJson("/api/v1/inventory", "GET");
+  return r.ok ? { ok: true, datos: r.datos } : r;
+}
+
+export async function guardarInventarioEnServidor({ sombrero, enMano = null, mochila = [] }) {
+  const r = await peticionJson("/api/v1/inventory", "PUT", { sombrero, enMano, mochila });
+  return r.ok ? { ok: true, datos: r.datos } : r;
+}
+
+// ---- reglas fijas del juego (publicas: tambien las reciben los invitados)
+export async function cargarReglasEnServidor() {
+  const r = await peticionJson("/api/v1/game/config", "GET");
+  return r.ok ? { ok: true, datos: r.datos } : r;
+}

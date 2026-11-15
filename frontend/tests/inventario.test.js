@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { crearInventario, MAX_MOCHILA } from '../src/juego/inventario.js';
 
 const memoria = (inicial = {}) => {
@@ -105,5 +105,83 @@ describe('inventario: sombrero', () => {
     const inv = crearInventario(roto);
     expect(() => inv.fijarSombrero('guardado')).not.toThrow();
     expect(inv.modoSombrero(CON)).toBe('oculto');
+  });
+});
+
+
+describe('inventario: guardado en la cuenta (servidor)', () => {
+  const catalogo = {
+    bate: { id: 'bate', tipo: 'cuerpo', crear: () => {} },
+    cuchillo: { id: 'cuchillo', tipo: 'cuerpo', crear: () => {} },
+    pistola: { id: 'pistola', tipo: 'pistola', crear: () => {} },
+    puños: { id: 'puños', tipo: 'cuerpo', crear: null }
+  };
+  afterEach(() => vi.useRealTimers());
+
+  it('conectar carga sombrero, mochila y arma de la mano, y devuelve el arma', () => {
+    const inv = crearInventario(null), j = { arma: null, municion: 0 };
+    inv.ligar(j);
+    const mano = inv.conectar({
+      sombrero: 'guardado',
+      enMano: { arma: 'pistola', municion: 4 },
+      mochila: [{ arma: 'bate', municion: 0 }]
+    }, catalogo, () => {});
+    expect(inv.sombrero).toBe('guardado');
+    expect(mano).toBe(catalogo.pistola);
+    expect(j).toEqual({ arma: catalogo.pistola, municion: 4 });
+    expect(inv.mochila).toEqual([{ arma: catalogo.bate, municion: 0 }]);
+  });
+
+  it('descarta lo que el servidor no podria aceptar (armas raras, pistola sin balas, mochila de mas)', () => {
+    const inv = crearInventario(null), j = { arma: catalogo.bate, municion: 0 };
+    inv.ligar(j);
+    inv.conectar({
+      sombrero: 'volando',
+      enMano: { arma: 'pistola', municion: 0 },
+      mochila: [{ arma: 'bazuca' }, { arma: 'puños' }, ...Array(5).fill({ arma: 'cuchillo', municion: 0 })]
+    }, catalogo, () => {});
+    expect(inv.sombrero).toBe('puesto');
+    expect(j.arma).toBeNull();
+    expect(inv.mochila).toHaveLength(MAX_MOCHILA);
+  });
+
+  it('cada cambio se guarda en el servidor, juntando los seguidos en un solo envio', () => {
+    vi.useFakeTimers();
+    const guardar = vi.fn(), inv = crearInventario(null), j = { arma: null, municion: 0 };
+    inv.ligar(j);
+    inv.conectar({}, catalogo, guardar);
+    j.arma = catalogo.bate;                              // recoge un bate despues de entrar
+    inv.fijarSombrero('guardado');
+    inv.guardarEnMano(j);
+    inv.cambiarArma(j, 0);
+    expect(guardar).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(700);
+    expect(guardar).toHaveBeenCalledTimes(1);
+    expect(guardar).toHaveBeenCalledWith({ sombrero: 'guardado', enMano: { arma: 'bate', municion: 0 }, mochila: [] });
+  });
+
+  it('con cuenta no usa el localStorage del navegador (otra cuenta no hereda el sombrero)', () => {
+    const m = memoria();
+    const inv = crearInventario(m);
+    inv.conectar({ sombrero: 'guardado' }, catalogo, () => {});
+    inv.fijarSombrero('puesto');
+    expect(m.d['idolo.inventario.v1']).toBeUndefined();
+  });
+
+  it('guardarAhora envia ya, por ejemplo al morir o cerrar la pagina', () => {
+    const guardar = vi.fn(), inv = crearInventario(null), j = { arma: catalogo.pistola, municion: 3 };
+    inv.ligar(j);
+    inv.conectar({}, catalogo, guardar);
+    j.arma = null; j.municion = 0;                       // perdio el arma al morir
+    inv.guardarAhora();
+    expect(guardar).toHaveBeenCalledWith({ sombrero: 'puesto', enMano: null, mochila: [] });
+  });
+
+  it('sin cuenta (invitado) solo recuerda el sombrero en el navegador', () => {
+    const m = memoria();
+    const inv = crearInventario(m), j = { arma: catalogo.bate, municion: 0 };
+    inv.ligar(j);
+    inv.fijarSombrero('guardado');
+    expect(JSON.parse(m.d['idolo.inventario.v1'])).toEqual({ sombrero: 'guardado' });
   });
 });

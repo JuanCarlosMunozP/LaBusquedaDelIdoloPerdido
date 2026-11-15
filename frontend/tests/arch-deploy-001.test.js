@@ -77,7 +77,7 @@ describe('ARCH-DEPLOY-001: Verificación de infraestructura Docker, Nginx, Postg
     const reqs = leer('backend/requirements.txt');
     const sec = leer('backend/app/core/security.py');
     const deps = leer('backend/app/presentation/dependencies.py');
-    const routers = leer('backend/app/presentation/routers.py');
+    const routers = leer('backend/app/presentation/routers/__init__.py');   // un modulo por responsabilidad
     const migration = leer('backend/alembic/versions/0001_initial_schema.py');
 
     expect(reqs).toContain('argon2-cffi');

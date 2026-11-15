@@ -96,3 +96,31 @@ describe('Cuenta y progreso delegados al backend', () => {
     expect(cuenta.nivelGuardado()).toBe(0);
   });
 });
+
+describe('inventario en la API de cuentas', () => {
+  it('lee y guarda el inventario con las rutas, el metodo y el CSRF correctos', async () => {
+    const api = await import('../src/cuenta/apiCliente.js');
+    const llamadas = [];
+    api.configurarFetchApi(async (ruta, opciones) => {
+      llamadas.push([ruta, opciones.method, opciones.headers['X-CSRF-Token'], opciones.body]);
+      return { ok: true, status: 200, headers: { get: () => 'tok-1' }, json: async () => ({ sombrero: 'guardado', enMano: null, mochila: [] }) };
+    });
+    const leido = await api.cargarInventarioEnServidor();
+    expect(leido).toEqual({ ok: true, datos: { sombrero: 'guardado', enMano: null, mochila: [] } });
+    await api.guardarInventarioEnServidor({ sombrero: 'guardado', enMano: { arma: 'bate', municion: 0 }, mochila: [] });
+    expect(llamadas[0].slice(0, 2)).toEqual(['/api/v1/inventory', 'GET']);
+    expect(llamadas[1][0]).toBe('/api/v1/inventory');
+    expect(llamadas[1][1]).toBe('PUT');
+    expect(llamadas[1][2]).toBe('tok-1');
+    expect(JSON.parse(llamadas[1][3])).toEqual({ sombrero: 'guardado', enMano: { arma: 'bate', municion: 0 }, mochila: [] });
+  });
+
+  it('si el servidor rechaza o no responde devuelve el error sin lanzar', async () => {
+    const api = await import('../src/cuenta/apiCliente.js');
+    api.configurarFetchApi(async () => { throw new Error('caido'); });
+    expect((await api.cargarInventarioEnServidor()).ok).toBe(false);
+    api.configurarFetchApi(async () => ({ ok: false, status: 400, headers: { get: () => null }, json: async () => ({ detail: 'La mochila guarda como máximo 3 armas.' }) }));
+    const r = await api.guardarInventarioEnServidor({ sombrero: 'puesto' });
+    expect(r).toMatchObject({ ok: false, mensaje: 'La mochila guarda como máximo 3 armas.' });
+  });
+});

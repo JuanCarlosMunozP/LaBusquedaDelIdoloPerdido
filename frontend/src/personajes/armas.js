@@ -4,6 +4,7 @@
 //   tipo "pistola": dispara balas desde `distancia` (m) hasta `rango` (m)
 //   dano = vida que quita a Max | golpeEnemigo = vida que quita a un mercenario (tiene 3) cuando Max la usa | espera = segundos entre ataques
 import * as THREE from 'three';
+import { reglas } from '../juego/reglas.js';
 
 const metal = () => new THREE.MeshStandardMaterial({ color: 0x1d1e22, roughness: 0.4, metalness: 0.7 });
 const acero = () => new THREE.MeshStandardMaterial({ color: 0xc9ced4, roughness: 0.25, metalness: 0.9 });
@@ -72,13 +73,14 @@ export const ARMAS = {
 // eje del cuerpo le da en un brazo (hiere, no mata). `herida` dice que animacion de dolor usar.
 export function zonaDeBala(y, lateral = 0) {
   const lado = lateral >= 0 ? "I" : "D";
-  const brazo = Math.abs(lateral) > 0.2;
-  if (y > 1.55) return { zona: "la cabeza", mortal: true };
-  if (y > 0.8 && brazo) return { zona: "el brazo", dano: 10, herida: { parte: "brazo", lado } };
-  if (y > 1.15) return { zona: "el pecho", mortal: true };
-  if (y > 0.8) return { zona: "el abdomen", dano: 20, herida: { parte: "abdomen", lado } };
-  if (y > 0.35 && y < 0.6) return { zona: "la rodilla", dano: 10, herida: { parte: "rodilla", lado } };
-  return { zona: "la pierna", dano: 10, herida: { parte: "pierna", lado } };
+  const u = reglas.balas.umbrales, dano = reglas.balas.dano;     // los define el servidor (ver reglas.js)
+  const brazo = Math.abs(lateral) > u.brazoLateral;
+  if (y > u.cabeza) return { zona: "la cabeza", mortal: true };
+  if (y > u.abdomen && brazo) return { zona: "el brazo", dano: dano.brazo, herida: { parte: "brazo", lado } };
+  if (y > u.pecho) return { zona: "el pecho", mortal: true };
+  if (y > u.abdomen) return { zona: "el abdomen", dano: dano.abdomen, herida: { parte: "abdomen", lado } };
+  if (y > u.rodillaMin && y < u.rodillaMax) return { zona: "la rodilla", dano: dano.rodilla, herida: { parte: "rodilla", lado } };
+  return { zona: "la pierna", dano: dano.pierna, herida: { parte: "pierna", lado } };
 }
 
 // sorteo con pesos: cada llamada puede dar un arma distinta

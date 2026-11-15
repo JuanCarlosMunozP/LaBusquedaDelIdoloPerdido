@@ -201,6 +201,7 @@ export class Humano {
   // contra, de espaldas; si viene de un costado, cae de lado (izquierdo o derecho).
   // `caida` fuerza el tipo; sin ninguno de los dos se sortea.
   morir(caida, empuje) {
+    if (!this.muerto) this.alMorir?.(empuje);          // main.js lo usa para soltar arma y sombrero
     this.muerto = true;
     this.herida = null;
     this.ladoCaida = Math.random() < 0.5 ? -1 : 1;     // +1 = cae sobre su lado derecho, -1 = sobre el izquierdo

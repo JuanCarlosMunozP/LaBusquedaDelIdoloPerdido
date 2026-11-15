@@ -97,9 +97,20 @@ export const aparienciaHumano = {
     this.colocarSombrero("mano");
   },
 
+  // Saca el sombrero del cuerpo para que caiga al suelo (muerte). Devuelve la malla si estaba a la
+  // vista (en la cabeza o la mano) o null si estaba guardado/oculto. Despues colocarSombrero() no lo
+  // vuelve a poner, asi un sombrero guardado nunca aparece de la nada.
+  soltarSombrero() {
+    const s = this.sombrero;
+    if (!s || s.suelto) return null;
+    const visible = s.modo === "cabeza" || s.modo === "mano";
+    s.suelto = true;
+    return visible ? s.malla : null;
+  },
+
   colocarSombrero(modo) {
     const s = this.sombrero;
-    if (!s || s.modo === modo) return;
+    if (!s || s.suelto || s.modo === modo) return;
     s.modo = modo;
     s.malla.visible = modo !== "oculto";
     const sitio = s[modo];

@@ -59,6 +59,22 @@ export function registrarVictoria(segundos) {
   const t = Number.isFinite(segundos) && segundos >= 1 ? Math.min(Math.round(segundos), 86400) : null;
   guardar({ nivel: 0, tiempoVictoria: t });
 }
+// Inventario de la cuenta (null si es invitado o no hay conexion). Los guardados van en la misma cola.
+export async function cargarInventario() {
+  if (!actual?.remoto) return null;
+  const r = await api.cargarInventarioEnServidor();
+  return r.ok ? r.datos : null;
+}
+export function guardarInventario(datos) {
+  const cuenta = actual;
+  if (!cuenta?.remoto) return;
+  cola = cola.then(async () => {
+    if (actual !== cuenta) return;
+    const r = await api.guardarInventarioEnServidor(datos);
+    if (!r.ok) console.warn("No se pudo guardar el inventario:", r.mensaje);
+  });
+}
+export function inventarioConCuenta() { return !!actual?.remoto; }
 export const nivelGuardado = () => actual?.datos?.nivel ?? 0;
 export const usuario = () => actual;
 

@@ -13,6 +13,9 @@ import { crearFrio } from './juego/frio.js';
 import { resolverGolpe, dispararJugador } from './juego/combate.js';
 import { crearSuministros } from './juego/suministros.js';
 import { crearInventario } from './juego/inventario.js';
+import { crearObjetosSueltos } from './juego/soltar.js';
+import { ARMAS } from './personajes/armas.js';
+import { cargarReglas } from './juego/reglas.js';
 import { crearPanelInventario } from './interfaz/panelInventario.js';
 import { crearCinematicaAvion } from './escenario/cinematica.js';
 import { crearCinematicaPlaya } from './escenario/cinematicaPlaya.js';
@@ -60,7 +63,9 @@ let misionesAceptadas = false;
 let dialogo = null;                   // { lineas, i } mientras Daniel habla
 let puedeTeletransportar = true;      // enfriamiento del portal (3 s, como en la clase)
 const sonido = new Sonido();
-const inventario = crearInventario();   // sombrero puesto/guardado: persiste al morir y al recargar
+const objetosSueltos = crearObjetosSueltos(scene);   // arma y sombrero que caen al morir
+const inventario = crearInventario();
+window.addEventListener("pagehide", () => inventario.guardarAhora());   // no perder un cambio reciente al cerrar   // sombrero puesto/guardado: persiste al morir y al recargar
 const gltfLoader = new GLTFLoader();
 
 let estado = "cargando";     // cargando | inicio | jugando | pausa | victoria | derrota
@@ -87,6 +92,7 @@ const jugador = {
   municion: 0
 };
 
+inventario.ligar(jugador);               // el arma de la mano y la mochila se guardan juntas
 const suministros = crearSuministros({ scene, sonido, jugador, inventario });   // botiquines y kits de arma al azar
 const frio = crearFrio();               // barras de frio y calor (solo en la montaña)
 const vista = crearVista(scene, camera);   // camara en tercera persona (camara.js)
@@ -233,11 +239,22 @@ window.visualViewport?.addEventListener("resize", ajustarCamara);
 // 5. CARGA DE MODELOS (hechos en Blender)
 // ============================================================
 const esModoDev = import.meta.env.DEV;
+// Con cuenta, el inventario vive en el servidor: se carga al entrar y se guarda cada vez que cambia.
+// Invitado o sin conexion: solo el sombrero se recuerda en este navegador.
+async function cargarInventarioDeCuenta() {
+  if (!cuenta.inventarioConCuenta()) return;
+  const guardado = await cuenta.cargarInventario();
+  if (!guardado) return;
+  inventario.conectar(guardado, ARMAS, cuenta.guardarInventario);
+  suministros.sincronizarArma(axel);          // muestra en la mano el arma que traia guardada
+}
+
 async function iniciar() {
   // La misma base de Mixamo conserva las proporciones; cada mercenario recibe rasgos propios.
   const gAxel = await gltfLoader.loadAsync("/models/daniel.glb?v=" + Date.now());
   modeloEnemigo = clonarModelo(gAxel.scene);
   axel = new Humano(gAxel.scene);
+  axel.alMorir = soltarObjetosDeMax;
   axel.personalizarCabelloAxel();
   // La camisa aporta las mangas de la chaqueta de cuero.
   axel.vestir(VESTUARIO_AXEL);
@@ -246,9 +263,11 @@ async function iniciar() {
   axel.direccion = Math.PI;
   axel.grupo.rotation.y = Math.PI;
 
+  await cargarReglas(ARMAS);                   // tiempos de golpe, daños y suministros los define el servidor
   await cuenta.sesion();                       // inicio de sesion (o invitado) antes de elegir el nivel
   const inicial = esModoDev && /nivel=(\d)/.exec(location.hash);   // #demo&nivel=1 salta a otro bioma (solo en desarrollo)
   await empezarNivel(inicial ? Math.min(+inicial[1], NIVELES.length - 1) : cuenta.nivelGuardado());
+  await cargarInventarioDeCuenta();
 
   // Modo de prueba: index.html#demo  o  index.html#demo=x,z (empieza sin pulsar "Jugar")
   if (esModoDev && location.hash.startsWith("#demo")) {
@@ -448,10 +467,24 @@ function danar(cantidad, mortal = false, zona = "", empuje = null, herida = null
   else if (herida) axel.herir(herida.parte, herida.lado);
 }
 
+// Al morir, Max suelta lo que lleva a la vista: el arma de la mano y el sombrero (si no lo tenia guardado)
+function soltarObjetosDeMax(empuje) {
+  axel.apuntando = 0;                                  // baja el brazo antes de soltar la pistola
+  const arma = axel.armaMalla;
+  if (arma) {
+    axel.armaMalla = null;
+    objetosSueltos.soltar(arma, { tipo: "arma", grosor: 0.035, impulso: empuje, fuerza: 1.8 });
+  }
+  const sombrero = axel.soltarSombrero();
+  if (sombrero) objetosSueltos.soltar(sombrero, { tipo: "sombrero", grosor: 0.012, impulso: empuje, fuerza: 1.2 });
+  // el arma soltada se pierde; la mochila y el estado del sombrero se conservan
+  if (jugador.arma) { suministros.quitarArma(null); inventario.guardarAhora(); }
+}
+
 function matarJugador(empuje) {
   if (!jugador.vivo) return;
   jugador.vivo = false;
-  axel.morir(undefined, empuje);
+  axel.morir(undefined, empuje);                       // al morir, axel.alMorir suelta arma y sombrero
   sonido.derrota();
   setTimeout(() => terminar("derrota"), 1500);
 }
@@ -790,6 +823,10 @@ function animar() {
       }
     }
 
+    if (objetosSueltos.cantidad) {                      // siguen cayendo aunque Max ya este tendido
+      const nivelMar = mundo.agua?.tipo === "mar" ? mundo.agua.nivel : -Infinity;
+      objetosSueltos.actualizar(dt, (x, z) => Math.max(mundo.altura(x, z), nivelMar));
+    }
     if (daniel && daniel.activo !== false) daniel.actualizar(dt, 0, true, tiempo);
     mundo.actualizar(tiempo, dt, jugador.pos);
     const ctx = { estado, jugador, mundo, axel, tiempo };
