@@ -29,11 +29,17 @@ export function cargarTexturas(cargador = new THREE.TextureLoader(), base = impo
   return pendiente;
 }
 
-// Cuanto es tierra (1) y cuanto arena (0) en cada punto: la playa es arena y, al subir, se vuelve tierra.
-// En el desierto todo es arena.
-export function mezclaSuelo(h, tema) {
+// Cuanto es tierra (1) y cuanto arena (0) en cada punto.
+//   isla: tierra en todo el centro y arena SOLO en la orilla (anillo alrededor de la isla), sin manchas por altura
+//   desierto: todo arena | montana: tierra al subir
+export function mezclaSuelo(x, z, h, tema) {
+  const suave = THREE.MathUtils.smoothstep;
   if (tema.tipo === "desierto") return 0;
-  return THREE.MathUtils.smoothstep(h, 0.3, 1.0);
+  if (tema.tipo === "isla") {
+    const borde = Math.hypot(x, z) + 1.6 * Math.sin(Math.atan2(z, x) * 5 + tema.desfase);   // orilla algo irregular
+    return 1 - suave(borde, 26, 34);
+  }
+  return suave(h, 0.3, 1.0);
 }
 
 // Pinta el terreno con arena y tierra mezcladas segun la altura. `geometria` ya tiene las alturas puestas.
@@ -55,8 +61,18 @@ export function texturarSuelo(geometria, material, texturas, tema, tam) {
 
   const pos = geometria.attributes.position;
   const mezcla = new Float32Array(pos.count);
-  for (let i = 0; i < pos.count; i++) mezcla[i] = mezclaSuelo(pos.getY(i), tema);
+  for (let i = 0; i < pos.count; i++) mezcla[i] = mezclaSuelo(pos.getX(i), pos.getZ(i), pos.getY(i), tema);
   geometria.setAttribute("mezcla", new THREE.BufferAttribute(mezcla, 1));
+
+  if (tema.tipo === "isla") {
+    // la textura manda: sin el tinte de pasto/arena por altura (daba manchas ovaladas), solo un ruido leve de brillo
+    const color = geometria.attributes.color;
+    for (let i = 0; i < color.count; i++) {
+      const v = 0.86 + 0.14 * (0.5 + 0.5 * Math.sin(i * 12.9898) * Math.cos(i * 4.1414));
+      color.setXYZ(i, v, v, v);
+    }
+    color.needsUpdate = true;
+  }
 
   material.onBeforeCompile = (shader) => {
     shader.uniforms.tierraMap = { value: tierra };
