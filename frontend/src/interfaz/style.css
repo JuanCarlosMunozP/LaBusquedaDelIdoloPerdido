@@ -239,3 +239,19 @@ canvas { display: block; }
   background: rgba(0, 0, 0, 0.45);
   color: #fff;
 }
+
+/* ---------- Tutorial de controles (interfaz/tutorial.js) ---------- */
+#tutorial {
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 5; pointer-events: none;
+  min-width: min(340px, 90vw); padding: 12px 18px; border-radius: 12px; color: #f3e8dc; font-size: 15px;
+  background: rgba(22, 14, 18, 0.85); border: 1px solid rgba(255, 190, 110, 0.45);
+}
+#tutorial[hidden] { display: none; }
+#tutorial ul { margin: 6px 0; padding: 0; list-style: none; line-height: 1.8; }
+#tutorial li::before { content: "○ "; color: #ffc27a; }
+#tutorial li.hecho { opacity: 0.55; text-decoration: line-through; }
+#tutorial li.hecho::before { content: "✓ "; }
+#tutorial b { color: #ffc27a; }
+.tutorial-titulo { margin: 0; font-weight: 700; color: #ffb35c; }
+.tutorial-omitir { margin: 4px 0 0; font-size: 12px; opacity: 0.6; }
+#tutorial.listo ul, #tutorial.listo .tutorial-omitir { display: none; }

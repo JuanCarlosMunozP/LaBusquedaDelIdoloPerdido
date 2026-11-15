@@ -25,6 +25,7 @@ import { crearCinematicaPlaya } from './escenario/cinematicaPlaya.js';
 import { gestionarPersonajes, crearResolucionDinamica } from './juego/detalle.js';
 import { hud, decir, fundido, cajaDialogo, avisoHablar, mostrarLinea, cerrarDialogo, pintarObjetivos, pantallaFinal } from './interfaz/hud.js';
 import * as cuenta from './cuenta/cuenta.js';
+import { iniciarDesdePortada } from './interfaz/portada.js'; import { iniciarTutorial } from './interfaz/tutorial.js';
 import { dispositivo, medidaVisible, pantallaCompleta } from './interfaz/dispositivo.js';
 import { crearControlesTactiles } from './interfaz/tactil.js';
 import { IDOLOS_POR_NIVEL, METROS_NADO, NIVELES, GUIONES, CINEMATICAS, CASAS, objetivos } from './juego/datos.js';
@@ -221,26 +222,8 @@ cajaDialogo.addEventListener("pointerdown", () => { if (tactil) hablarSiEstaCerc
 document.addEventListener("visibilitychange", () => { if (document.hidden && estado === "jugando") pausar(); });
 
 let modoElegido = null;                     // "solo" | "multi": se pregunta al pulsar Jugar por primera vez
-let sesionLista = false;                    // false: el boton de la portada es "Iniciar sesión"
 hud.boton.addEventListener("click", () => {
-  if (estado === "inicio" && !sesionLista) {   // 1.º clic: login; al terminar se continua directo hacia el juego
-    estado = "cargando";
-    hud.boton.disabled = true;
-    hud.boton.textContent = "Cargando…";
-    entrarAlJuego().then(() => {
-      sesionLista = true;
-      estado = "inicio";
-      hud.boton.disabled = false;
-      hud.boton.textContent = "Jugar";
-      hud.boton.click();
-    }).catch((err) => {
-      console.error(err);
-      estado = "inicio";
-      hud.boton.disabled = false;
-      hud.boton.textContent = "Iniciar sesión";
-    });
-    return;
-  }
+  if (estado === "inicio" && iniciarDesdePortada({ boton: hud.boton, entrar: entrarAlJuego, poner: (e) => (estado = e), nivel: () => nivel })) return;
   if (estado === "inicio" && !modoElegido) {
     pedirModo({ multijugador: true }).then(async (m) => {
       if (m === "multi") codigoSala = await pedirSala({ conCuenta: cuenta.inventarioConCuenta() });   // sin cuenta no hay sala
@@ -292,14 +275,11 @@ async function cargarInventarioDeCuenta() {
   suministros.sincronizarArma(axel);          // muestra en la mano el arma que traia guardada
 }
 
-// Inicio de sesion (o invitado), nivel guardado e inventario de la cuenta.
 async function entrarAlJuego() {
-  await cuenta.sesion();
+  await cuenta.sesion();   // login (o invitado) y despues nivel guardado e inventario
   const inicial = esModoDev && /nivel=(\d)/.exec(location.hash);   // #demo&nivel=1 salta a otro bioma (solo en desarrollo)
-  await empezarNivel(inicial ? Math.min(+inicial[1], NIVELES.length - 1) : cuenta.nivelGuardado());
-  await cargarInventarioDeCuenta();
+  await empezarNivel(inicial ? Math.min(+inicial[1], NIVELES.length - 1) : cuenta.nivelGuardado()); await cargarInventarioDeCuenta();
 }
-
 async function iniciar() {
   // La misma base de Mixamo conserva las proporciones; cada mercenario recibe rasgos propios.
   const gAxel = await gltfLoader.loadAsync("/models/daniel.glb?v=" + Date.now());
@@ -315,7 +295,6 @@ async function iniciar() {
   axel.grupo.rotation.y = Math.PI;
 
   await cargarReglas(ARMAS);                   // tiempos de golpe, daños y suministros los define el servidor
-
   // Modo de prueba: index.html#demo  o  index.html#demo=x,z (empieza sin pulsar "Jugar")
   if (esModoDev && location.hash.startsWith("#demo")) {
     await entrarAlJuego();
@@ -327,8 +306,7 @@ async function iniciar() {
     hud.ui.classList.remove("oculta");
     return;
   }
-
-  // La portada se ve primero; el inicio de sesion se abre al pulsar el boton (ver el listener de hud.boton).
+  iniciarTutorial(() => estado, () => nivel);
   estado = "inicio";
   hud.boton.disabled = false;
   hud.boton.textContent = "Iniciar sesión";

@@ -7,9 +7,12 @@ import { TEMAS } from '../escenario/temas.js';
 export const IDOLOS_POR_NIVEL = 2;
 export const METROS_NADO = 15;
 export const NIVELES = [
-  { nombre: TEMAS[0].nombre, enemigos: 2, extras: ["ruinas"] },
-  { nombre: TEMAS[1].nombre, enemigos: 3, extras: ["altar", "fogata"] },
-  { nombre: TEMAS[2].nombre, enemigos: 4, extras: ["nadar"] }
+  { nombre: TEMAS[0].nombre, enemigos: 2, extras: ["ruinas"],
+    descripcion: "Has despertado en una playa tras el naufragio. Daniel te espera para guiarte: reúne los ídolos dorados, derrota a los mercenarios y toca las ruinas antiguas del centro para que aparezca el bote." },
+  { nombre: TEMAS[1].nombre, enemigos: 3, extras: ["altar", "fogata"],
+    descripcion: "La montaña es fría y está vigilada. Reúne los ídolos, derrota a los mercenarios, escala hasta el altar de la cima y caliéntate en la fogata antes de que el frío te venza." },
+  { nombre: TEMAS[2].nombre, enemigos: 4, extras: ["nadar"],
+    descripcion: "El último tramo: un desierto con poca sombra y mucho sol. Reúne los ídolos, derrota a los mercenarios y refréscate nadando en el oasis para que llegue la caravana que te llevará a casa." }
 ];
 
 // Cada línea es el texto de Daniel, o ["Max", texto] cuando responde el protagonista.
