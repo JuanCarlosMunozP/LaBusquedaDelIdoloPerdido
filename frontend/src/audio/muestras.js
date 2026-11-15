@@ -1,12 +1,12 @@
 // Sonidos de agua reales (public/sounds). Se cargan en segundo plano despues del primer clic; mientras
 // no llegan (o si fallan) sigue sonando el agua sintetizada de audio.js, asi el juego nunca queda mudo.
 //   oceano-lite  -> mar (bucle, siempre)
-//   golpes-lite / nadar.flac -> chapoteo y brazadas
+//   aire-lite / nada-lite -> chapoteo y brazadas
 // Los *-lite son versiones livianas (mono, 22 kHz) de los originales.
 export const MUESTRAS_AGUA = {
   mar: "sounds/oceano-lite.wav",
-  golpes: "sounds/golpes-lite.wav",
-  nadar: "sounds/nadar.flac"
+  golpes: "sounds/aire-lite.wav",
+  nadar: "sounds/nada-lite.wav"
 };
 
 // Descarga y decodifica una muestra. Devuelve null si algo falla (nunca lanza).

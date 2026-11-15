@@ -6,5 +6,7 @@ frontend/dist/
 
 
 
-# Audio original muy pesado (73 MB): el juego usa oceano-lite.wav
+# Audios originales pesados: el juego usa las versiones *-lite
 frontend/public/sounds/ocean.wav
+frontend/public/sounds/aire.wav
+frontend/public/sounds/nada.wav
