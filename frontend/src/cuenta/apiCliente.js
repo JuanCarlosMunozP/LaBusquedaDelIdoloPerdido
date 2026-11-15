@@ -146,3 +146,11 @@ export async function cargarReglasEnServidor() {
   const r = await peticionJson("/api/v1/game/config", "GET");
   return r.ok ? { ok: true, datos: r.datos } : r;
 }
+
+// ---- suministros del mapa (el servidor decide que aparece, cuando y cuanto dura)
+const ok = (r) => (r.ok ? { ok: true, datos: r.datos } : r);
+export const crearCarreraSuministros = async () => ok(await peticionJson("/api/v1/supplies/runs", "POST"));
+export const estadoSuministros = async (carrera) =>
+  ok(await peticionJson(`/api/v1/supplies/runs/${encodeURIComponent(carrera)}`, "GET"));
+export const reclamarSuministro = async (carrera, item) =>
+  ok(await peticionJson(`/api/v1/supplies/runs/${encodeURIComponent(carrera)}/claim`, "POST", { item }));

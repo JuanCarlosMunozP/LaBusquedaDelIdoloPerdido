@@ -1,19 +1,22 @@
-// Suministros aleatorios: cada 10 segundos aparece un botiquin y un kit de arma en un punto al azar
-// del mapa. Si Max no los recoge, desaparecen al minuto (parpadean los ultimos segundos).
-//   botiquin: +40 de vida | kit de arma: Max recibe un arma al azar (puños, cuchillo, bate, machete
-//   o pistola con 10 balas) que usa al atacar.
+// Suministros del mapa: botiquines y kits de arma. El SERVIDOR decide cuando aparece cada uno, cuanto
+// dura, cuantos puede haber y que arma trae un kit (backend/app/domain/supplies.py); aqui solo se
+// dibujan en el mapa, se animan y se avisa al servidor cuando Max llega hasta uno. No duran entre
+// partidas: cada nivel abre una carrera nueva (reiniciar). Sin servidor no aparece ninguno.
 import { crearModeloBotiquin, crearModeloKitArma } from '../escenario/botiquines.js';
-import { armaDeKit, equiparArma } from '../personajes/armas.js';
+import { ARMAS, equiparArma } from '../personajes/armas.js';
 import { decir } from '../interfaz/hud.js';
 import { reglas } from './reglas.js';
+import { crearSincronizador, elegirPosicion } from './sincronizadorSuministros.js';
+import * as api from '../cuenta/apiCliente.js';
 
-// Tiempos, balas y curacion los define el servidor (reglas.js): aqui solo se leen en el momento de usarlos.
-const S = reglas.suministros;
+const RADIO_RECOGER = 1.4;     // m
+const REINTENTO_RECOGER = 2;   // s tras un fallo de red al recoger
+const apiSuministros = { crear: api.crearCarreraSuministros, estado: api.estadoSuministros, reclamar: api.reclamarSuministro };
 
-
-export function crearSuministros({ scene, sonido, jugador, inventario }) {
-  const items = [];       // { tipo, obj, x, y, z, edad }
-  let reloj = S.cada;
+export function crearSuministros({ scene, sonido, jugador, inventario, sincronizador = crearSincronizador({ api: apiSuministros }) }) {
+  const S = reglas.suministros;       // vidaMaxima y aviso (los manda el servidor)
+  const objetos = new Map();          // id -> { obj, x, y, z, tipo, reclamando, reintentoEn }
+  let mundoActual = null;
 
   const panel = document.createElement("div");
   panel.style.cssText = "position:fixed;left:18px;bottom:14px;padding:6px 14px;border-radius:20px;" +
@@ -27,40 +30,39 @@ export function crearSuministros({ scene, sonido, jugador, inventario }) {
     }
   };
 
-  // punto de tierra firme al azar, lejos de Max y de los obstaculos
-  function puntoAleatorio(mundo) {
-    for (let i = 0; i < 40; i++) {
-      const a = Math.random() * Math.PI * 2, r = 5 + Math.sqrt(Math.random()) * mundo.tema.limite * 0.7;
-      const x = Math.cos(a) * r, z = Math.sin(a) * r;
-      const y = mundo.altura(x, z);
-      if (y < 0.6 || !mundo.dentroDelMapa(x, z)) continue;
-      if (Math.hypot(x - jugador.pos.x, z - jugador.pos.z) < 5) continue;
-      if (mundo.obstaculos.some((o) => Math.hypot(x - o.x, z - o.z) < o.r + 1)) continue;
-      return { x, y, z };
-    }
-    return null;
-  }
+  // ---- dibujar en el mapa lo que dice el servidor
+  // un punto sirve si es tierra firme dentro del mapa, lejos de Max y de los obstaculos
+  const puntoValido = (mundo) => (x, z) => {
+    const y = mundo.altura(x, z);
+    if (y < 0.6 || !mundo.dentroDelMapa(x, z)) return null;
+    if (Math.hypot(x - jugador.pos.x, z - jugador.pos.z) < 5) return null;
+    if (mundo.obstaculos.some((o) => Math.hypot(x - o.x, z - o.z) < o.r + 1)) return null;
+    return { y };
+  };
 
-  function aparecer(tipo, mundo) {
-    if (items.filter((s) => s.tipo === tipo).length >= S.maxPorTipo) return;
-    const p = puntoAleatorio(mundo);
-    if (!p) return;
-    const obj = tipo === "botiquin" ? crearModeloBotiquin() : crearModeloKitArma();
+  function colocar(item) {
+    const p = elegirPosicion(item.candidatos, mundoActual.tema.limite, puntoValido(mundoActual));
+    if (!p) return;                                   // ninguna posicion sirvio: no se dibuja (caduca solo)
+    const obj = item.tipo === "botiquin" ? crearModeloBotiquin() : crearModeloKitArma();
     obj.position.set(p.x, p.y + 0.5, p.z);
     scene.add(obj);
-    items.push({ tipo, obj, ...p, edad: 0 });
+    objetos.set(item.id, { obj, ...p, tipo: item.tipo, reclamando: false, reintentoEn: 0 });
   }
 
-  function quitar(i) {
-    scene.remove(items[i].obj);
-    items.splice(i, 1);
+  function quitar(id) {
+    const o = objetos.get(id);
+    if (!o) return;
+    scene.remove(o.obj);
+    objetos.delete(id);
   }
 
-  function tomarArma(axel) {
-    const arma = armaDeKit();
+  // ---- armas
+  function tomarArma(axel, premio) {
+    const arma = ARMAS[premio.arma];
+    if (!arma) return;
     const guardada = inventario?.guardarActual(jugador);      // la que llevaba va a la mochila
-    jugador.arma = arma.id === "puños" ? null : arma;
-    jugador.municion = arma.tipo === "pistola" ? S.balas : 0;
+    jugador.arma = arma;
+    jugador.municion = premio.municion;
     sincronizarArma(axel);
     inventario?.marcarCambio();
     decir(guardada ? `Kit de arma: ${arma.id} (la anterior va a la mochila)` : `Kit de arma: ${arma.id}`, 3);
@@ -92,35 +94,48 @@ export function crearSuministros({ scene, sonido, jugador, inventario }) {
     pintarPanel();
   }
 
+  // ---- recoger: el servidor valida y decide la recompensa
+  function recoger(id, o, axel, tiempo) {
+    if (o.tipo === "botiquin" && jugador.vida >= S.vidaMaxima) return;   // con la vida llena lo deja para despues
+    o.reclamando = true;
+    sincronizador.reclamar(id).then((r) => {
+      if (r.ok && jugador.vivo) {
+        if (r.recompensa.tipo === "botiquin") {
+          jugador.vida = Math.min(S.vidaMaxima, jugador.vida + r.recompensa.curacion);
+          decir(`Botiquín: +${r.recompensa.curacion} de vida`, 2.5);
+          sonido.recogerBotiquin();
+        } else {
+          tomarArma(axel, r.recompensa);
+          sonido.recogerArma();
+        }
+      }
+      if (r.ok || r.perdido) quitar(id);            // recogido, o alguien/algo se lo llevo antes
+      else { o.reclamando = false; o.reintentoEn = tiempo + REINTENTO_RECOGER; }
+    });
+  }
+
   function reiniciar() {
-    while (items.length) quitar(0);
-    reloj = S.cada;
+    for (const id of [...objetos.keys()]) quitar(id);
+    sincronizador.reiniciar();
   }
 
   function actualizar(dt, tiempo, mundo, axel) {
-    reloj -= dt;
-    if (reloj <= 0) {
-      reloj += S.cada;
-      aparecer("botiquin", mundo);
-      aparecer("arma", mundo);
+    mundoActual = mundo;
+    if (sincronizador.debeSincronizar()) {
+      sincronizador.sincronizar().then((cambios) => {
+        if (!cambios || mundoActual !== mundo) return;     // respuesta de un nivel anterior
+        cambios.quitados.forEach(quitar);
+        cambios.nuevos.forEach(colocar);
+      });
     }
-    for (let i = items.length - 1; i >= 0; i--) {
-      const s = items[i];
-      s.edad += dt;
-      if (s.edad >= S.duracion) { quitar(i); continue; }
-      s.obj.rotation.y = tiempo * 1.2 + i;
-      s.obj.position.y = s.y + 0.5 + Math.sin(tiempo * 2 + i) * 0.08;
-      s.obj.visible = s.edad < S.duracion - S.aviso || Math.floor(s.edad * 5) % 2 === 0;
-      if (!jugador.vivo || Math.hypot(jugador.pos.x - s.x, jugador.pos.z - s.z) > 1.4) continue;
-      if (s.tipo === "botiquin") {
-        if (jugador.vida >= S.vidaMaxima) continue;           // con la vida llena lo deja para despues
-        jugador.vida = Math.min(S.vidaMaxima, jugador.vida + S.curacion);
-        decir(`Botiquín: +${S.curacion} de vida`, 2.5);
-      } else {
-        tomarArma(axel);
-      }
-      if (s.tipo === "botiquin") sonido.recogerBotiquin(); else sonido.recogerArma();
-      quitar(i);
+    for (const [id, o] of [...objetos]) {
+      const item = sincronizador.items.get(id);
+      if (!item || sincronizador.tiempo() >= item.expira) { quitar(id); continue; }
+      o.obj.rotation.y = tiempo * 1.2 + id;
+      o.obj.position.y = o.y + 0.5 + Math.sin(tiempo * 2 + id) * 0.08;
+      o.obj.visible = sincronizador.visible(item, S.aviso);
+      if (o.reclamando || tiempo < o.reintentoEn || !jugador.vivo) continue;
+      if (Math.hypot(jugador.pos.x - o.x, jugador.pos.z - o.z) <= RADIO_RECOGER) recoger(id, o, axel, tiempo);
     }
   }
 
