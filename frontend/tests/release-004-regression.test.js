@@ -1,10 +1,10 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { runInNewContext } from 'node:vm';
 import * as THREE from 'three';
 import { Enemigo } from '../src/personajes/enemigo.js';
+import { prepararPartida, limpiarPartida } from './helpers/partida.js';
 
-const main = readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
 const combate = readFileSync(new URL('../src/juego/combate.js', import.meta.url), 'utf8');
 function funcion(source, nombre) {
   const inicio = source.indexOf(`function ${nombre}(`);
@@ -14,61 +14,26 @@ function funcion(source, nombre) {
   return `${async ? 'async ' : ''}${source.slice(inicio, fin + 2)}`;
 }
 
-// Reloj manual; no setTimeout nativo, navegador, carga de GLB ni integración FSM.
-function prepararNivel() {
-  let tiempo = 0, completar;
-  const tareas = [];
-  const carga = new Promise((resolve) => { completar = resolve; });
-  const jugador = { vivo: true, vida: 0, pos: new THREE.Vector3(), vel: new THREE.Vector3() };
-  const pantallaFinal = vi.fn();
-  const clases = { toggle: vi.fn(), remove: vi.fn() };
-  const hud = { titulo: {}, texto: {}, boton: {}, pantalla: { classList: clases },
-    filaFrio: { classList: clases }, filaCalor: { classList: clases } };
-  const api = runInNewContext(`
-    let estado = 'jugando', cambiandoNivel = false, nivel = 0;
-    let metaLista = false, misionesAceptadas = false, dialogo = null, daniel = null;
-    ${['matarJugador', 'pausar', 'terminar', 'empezarNivel'].map((n) => funcion(main, n)).join('\n')}
-    ({ matarJugador, pausar, empezarNivel, estado: () => estado });
-  `, {
-    jugador, hud, pantallaFinal, tiempoFinal: 10, dispositivo: { tactil: false },
-    axel: { morir: vi.fn() }, sonido: { derrota: vi.fn() },
-    document: { exitPointerLock: vi.fn(), getElementById: () => ({}) },
-    setTimeout: (callback, demora) => {
-      const tarea = { callback, vence: tiempo + demora, cancelada: false };
-      tareas.push(tarea); return tarea;
-    },
-    clearTimeout: (tarea) => { tarea.cancelada = true; },
-    cuenta: { guardarNivel: vi.fn() }, NIVELES: [{ enemigos: 0 }, { enemigos: 0 }],
-    cargarMundo: () => carga, obj: {}, suministros: { reiniciar: vi.fn() },
-    enemigos: [], CASAS: [], scene: { remove: vi.fn(), add: vi.fn() },
-    crearDaniel: () => ({ grupo: { position: new THREE.Vector3() } }),
-    clonarModelo: () => ({}), modeloEnemigo: {}, danielPos: new THREE.Vector3(),
-    mundo: { spawn: { x: 0, z: 0 }, altura: () => 0, obstaculos: [], tema: {} },
-    cerrarDialogo: vi.fn(), frio: { reiniciar: vi.fn(), activo: false },
-    precalentar: async () => {},
-  });
-  return { api, jugador, pantallaFinal, completar,
-    avanzar(ms) {
-      tiempo += ms;
-      for (const tarea of tareas) {
-        if (!tarea.cancelada && !tarea.entregada && tarea.vence <= tiempo) {
-          tarea.entregada = true; tarea.callback();
-        }
-      }
-    } };
+// Funciones reales de ciclo.js y niveles.js (ver helpers/partida.js); reloj falso, sin navegador ni carga de GLB.
+async function prepararNivel() {
+  const h = await prepararPartida({ vida: 0 });
+  return { ...h, api: { matarJugador: h.ciclo.matarJugador, pausar: h.ciclo.pausar,
+    empezarNivel: h.niveles.empezarNivel, estado: () => h.g.estado }, completar: () => h.resolverCargas() };
 }
 
 describe('RELEASE-004: muerte pendiente y pausa (CU-011, POL-FSM-001)', () => {
-  it('R004-001: pausa conserva muerte legítima a 1499/1500 ms sin carga', () => {
-    const h = prepararNivel();
+  afterEach(() => limpiarPartida());
+
+  it('R004-001: pausa conserva muerte legítima a 1499/1500 ms sin carga', async () => {
+    const h = await prepararNivel();
     h.api.matarJugador(); h.api.pausar();
-    h.avanzar(1499);
+    await h.avanzar(1499);
     expect(h.api.estado()).toBe('pausa');
     expect(h.pantallaFinal).not.toHaveBeenCalled();
-    h.avanzar(1);
+    await h.avanzar(1);
     expect(h.api.estado()).toBe('derrota');
     expect(h.pantallaFinal).toHaveBeenCalledTimes(1);
-    h.avanzar(1500);
+    await h.avanzar(1500);
     expect(h.pantallaFinal).toHaveBeenCalledTimes(1);
   });
 
@@ -76,23 +41,23 @@ describe('RELEASE-004: muerte pendiente y pausa (CU-011, POL-FSM-001)', () => {
   // no se ha invocado reinicio. La prioridad general carga/muerte sigue pendiente
   // de decisión humana; estos casos no autorizan muerte prioritaria sobre WIN.
   it('R004-002: misma partida pausada no pierde su derrota al iniciar carga pendiente', async () => {
-    const h = prepararNivel();
+    const h = await prepararNivel();
     h.api.matarJugador(); h.api.pausar();
     const cambio = h.api.empezarNivel(1);
-    h.avanzar(1500);
+    await h.avanzar(1500);
     const estadoAlVencer = h.api.estado();
-    h.completar(); await cambio;
+    await h.completar(); await cambio;
     expect(estadoAlVencer).toBe('derrota');
     expect(h.pantallaFinal).toHaveBeenCalledTimes(1);
   });
 
   it('R004-003: completar carga en la misma partida no revive muerte pendiente pausada', async () => {
-    const h = prepararNivel();
+    const h = await prepararNivel();
     h.api.matarJugador(); h.api.pausar();
     const cambio = h.api.empezarNivel(1);
-    h.completar(); await cambio;
+    await h.completar(); await cambio;
     expect(h.jugador.vivo).toBe(false);
-    h.avanzar(1500);
+    await h.avanzar(1500);
     expect(h.api.estado()).toBe('derrota');
     expect(h.pantallaFinal).toHaveBeenCalledTimes(1);
   });

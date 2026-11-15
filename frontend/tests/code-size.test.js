@@ -5,7 +5,7 @@ import { join, relative, resolve } from 'node:path';
 // Separar por responsabilidades: ningun modulo nuevo debe pasar de 500 lineas. Los que ya pasaban
 // tienen un tope (no pueden crecer) hasta que se dividan en una fase aparte.
 const LIMITE = 500;
-const YA_EXCEDIDOS = { 'main.js': 880, 'escenario/mundo.js': 510 };
+const YA_EXCEDIDOS = { 'escenario/mundo.js': 510 };
 
 function archivos(dir) {
   return readdirSync(dir).flatMap((n) => {
