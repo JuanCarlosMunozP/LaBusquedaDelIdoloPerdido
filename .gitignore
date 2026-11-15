@@ -12,3 +12,10 @@ frontend/public/sounds/aire.wav
 frontend/public/sounds/nada.wav
 frontend/public/sounds/fire-cracking.wav
 .env.render
+
+# Python / pruebas / registros locales
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.log
+backend/test_security.db
