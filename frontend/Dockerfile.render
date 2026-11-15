@@ -41,9 +41,8 @@ COPY backend/tests ./tests
 
 COPY --from=frontend-builder /build/dist /usr/share/nginx/html
 COPY deploy/nginx/nginx.render.conf /app/nginx.render.conf
-COPY deploy/nginx/entrypoint-render.sh /app/entrypoint-render.sh
 COPY deploy/render/start.sh /app/start.sh
-RUN chmod +x /app/entrypoint-render.sh /app/start.sh && \
+RUN chmod +x /app/start.sh && \
     chown -R appuser:appgroup /app
 
 USER appuser

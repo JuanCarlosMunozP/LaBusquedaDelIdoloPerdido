@@ -1,5 +1,5 @@
 # Blueprint de Render — plan gratuito, un servicio Docker (Nginx + FastAPI) y PostgreSQL.
-#   Internet -> LaBusquedaDelIdoloPerdido (nginx + Basic Auth -> FastAPI en loopback) -> busquedadelidolodb
+#   Internet -> LaBusquedaDelIdoloPerdido (nginx -> FastAPI en loopback; acceso publico) -> busquedadelidolodb
 # Se adoptan los recursos ya creados en Render (mismos nombres).
 # Raspberry y VPS siguen usando compose*.yaml y no se ven afectados.
 
@@ -16,10 +16,6 @@ services:
     envVars:
       - key: PORT
         value: "10000"
-      - key: BASIC_AUTH_USER
-        sync: false
-      - key: BASIC_AUTH_PASSWORD
-        sync: false
       - key: DATABASE_URL
         fromDatabase:
           name: busquedadelidolodb
