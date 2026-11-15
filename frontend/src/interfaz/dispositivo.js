@@ -54,8 +54,8 @@ const calidad = CALIDADES.includes(forzada) ? forzada : detectarCalidad(tactil);
 
 // Ajustes graficos de cada nivel de calidad
 const AJUSTES = {
-  alta:  { pixelRatioMax: 1.5,  pixelRatioMin: 0.6,  sombra: 2048, sombras: true,  antialias: true,  segmentosTerreno: 170, copos: 1800, luzRostro: true },
-  media: { pixelRatioMax: 1.25, pixelRatioMin: 0.5,  sombra: 1024, sombras: true,  antialias: false, segmentosTerreno: 150, copos: 1000, luzRostro: true },
+  alta:  { pixelRatioMax: 1.5,  pixelRatioMin: 0.85,  sombra: 2048, sombras: true,  antialias: true,  segmentosTerreno: 170, copos: 1800, luzRostro: true },
+  media: { pixelRatioMax: 1.25, pixelRatioMin: 0.7,  sombra: 1024, sombras: true,  antialias: false, segmentosTerreno: 150, copos: 1000, luzRostro: true },
   baja:  { pixelRatioMax: 1,    pixelRatioMin: 0.4,  sombra: 512,  sombras: true,  antialias: false, segmentosTerreno: 120,  copos: 500,  luzRostro: false }
 };
 

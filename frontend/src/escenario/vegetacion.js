@@ -21,12 +21,13 @@ export async function crearVegetacion({ scene, gltfLoader, tema, rnd, obstaculos
           new THREE.Vector3(escala, escala, escala));
         for (const p of partes) p.matrices.push(m.clone().multiply(p.malla.matrixWorld));
       },
-      crear() {
+      crear(proyectaSombra = true) {
         for (const { malla, matrices } of partes) {
           if (!matrices.length) continue;
           const inst = new THREE.InstancedMesh(malla.geometry, malla.material, matrices.length);
           matrices.forEach((m, i) => inst.setMatrixAt(i, m));
-          inst.castShadow = inst.receiveShadow = true;
+          inst.castShadow = proyectaSombra;
+          inst.receiveShadow = true;
           scene.add(inst);
         }
       }
@@ -36,7 +37,7 @@ export async function crearVegetacion({ scene, gltfLoader, tema, rnd, obstaculos
   const colocarPalmera = palmas3d.colocar;
   let colocadas = 0;
   const palmas = [];
-  const maxPalmas = tema.tipo === "isla" ? 32 : 0;
+  const maxPalmas = tema.tipo === "isla" ? 16 : 0;   // con el modelo detallado, menos palmeras (cada una es 5 veces mas pesada que la anterior)
   for (let intento = 0; intento < 200 && colocadas < maxPalmas; intento++) {
     const a = rnd() * Math.PI * 2;
     const d = 14 + rnd() * 22;
@@ -125,7 +126,7 @@ export async function crearVegetacion({ scene, gltfLoader, tema, rnd, obstaculos
     }
   }
 
-  palmas3d.crear();
+  palmas3d.crear(false);   // la palmera nueva tiene ~22 mil triangulos: sin pasada de sombra para no bajar los cuadros por segundo
   pinos.crear();
   cactus.crear();
 
