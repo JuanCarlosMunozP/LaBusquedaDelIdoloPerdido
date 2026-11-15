@@ -221,7 +221,26 @@ cajaDialogo.addEventListener("pointerdown", () => { if (tactil) hablarSiEstaCerc
 document.addEventListener("visibilitychange", () => { if (document.hidden && estado === "jugando") pausar(); });
 
 let modoElegido = null;                     // "solo" | "multi": se pregunta al pulsar Jugar por primera vez
+let sesionLista = false;                    // false: el boton de la portada es "Iniciar sesión"
 hud.boton.addEventListener("click", () => {
+  if (estado === "inicio" && !sesionLista) {   // 1.º clic: login; al terminar se continua directo hacia el juego
+    estado = "cargando";
+    hud.boton.disabled = true;
+    hud.boton.textContent = "Cargando…";
+    entrarAlJuego().then(() => {
+      sesionLista = true;
+      estado = "inicio";
+      hud.boton.disabled = false;
+      hud.boton.textContent = "Jugar";
+      hud.boton.click();
+    }).catch((err) => {
+      console.error(err);
+      estado = "inicio";
+      hud.boton.disabled = false;
+      hud.boton.textContent = "Iniciar sesión";
+    });
+    return;
+  }
   if (estado === "inicio" && !modoElegido) {
     pedirModo({ multijugador: true }).then(async (m) => {
       if (m === "multi") codigoSala = await pedirSala({ conCuenta: cuenta.inventarioConCuenta() });   // sin cuenta no hay sala
@@ -273,6 +292,14 @@ async function cargarInventarioDeCuenta() {
   suministros.sincronizarArma(axel);          // muestra en la mano el arma que traia guardada
 }
 
+// Inicio de sesion (o invitado), nivel guardado e inventario de la cuenta.
+async function entrarAlJuego() {
+  await cuenta.sesion();
+  const inicial = esModoDev && /nivel=(\d)/.exec(location.hash);   // #demo&nivel=1 salta a otro bioma (solo en desarrollo)
+  await empezarNivel(inicial ? Math.min(+inicial[1], NIVELES.length - 1) : cuenta.nivelGuardado());
+  await cargarInventarioDeCuenta();
+}
+
 async function iniciar() {
   // La misma base de Mixamo conserva las proporciones; cada mercenario recibe rasgos propios.
   const gAxel = await gltfLoader.loadAsync("/models/daniel.glb?v=" + Date.now());
@@ -288,13 +315,10 @@ async function iniciar() {
   axel.grupo.rotation.y = Math.PI;
 
   await cargarReglas(ARMAS);                   // tiempos de golpe, daños y suministros los define el servidor
-  await cuenta.sesion();                       // inicio de sesion (o invitado) antes de elegir el nivel
-  const inicial = esModoDev && /nivel=(\d)/.exec(location.hash);   // #demo&nivel=1 salta a otro bioma (solo en desarrollo)
-  await empezarNivel(inicial ? Math.min(+inicial[1], NIVELES.length - 1) : cuenta.nivelGuardado());
-  await cargarInventarioDeCuenta();
 
   // Modo de prueba: index.html#demo  o  index.html#demo=x,z (empieza sin pulsar "Jugar")
   if (esModoDev && location.hash.startsWith("#demo")) {
+    await entrarAlJuego();
     const [dx, dz, dyaw] = (location.hash.split("=")[1] || "").split(",").map(Number);
     if (!Number.isNaN(dx) && !Number.isNaN(dz)) jugador.pos.set(dx, mundo.altura(dx, dz), dz);
     if (!Number.isNaN(dyaw)) vista.yaw = dyaw;   // 3.14 = camara de frente a Axel
@@ -304,9 +328,10 @@ async function iniciar() {
     return;
   }
 
+  // La portada se ve primero; el inicio de sesion se abre al pulsar el boton (ver el listener de hud.boton).
   estado = "inicio";
   hud.boton.disabled = false;
-  hud.boton.textContent = "Jugar";
+  hud.boton.textContent = "Iniciar sesión";
   hud.texto.innerHTML = "Eres <b>Max Montenegro</b>, un explorador atrapado en una isla con ruinas antiguas. " +
     "Atraviesa <b>una isla, una montaña y un desierto</b> en busca del ídolo perdido: reúne los <b>ídolos dorados</b>, " +
     "cumple los objetivos de cada nivel, sobrevive a los mercenarios y llega a la salida para volver a casa.";

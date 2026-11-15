@@ -126,7 +126,7 @@ canvas { display: block; }
 /* ---------- Inicio de sesion (cuenta/pantalla.js) ---------- */
 #cuenta {
   position: fixed; inset: 0; z-index: 30; display: flex; align-items: center; justify-content: center;
-  background: rgba(14, 6, 16, 0.82); backdrop-filter: blur(8px);
+  background: rgba(14, 6, 16, 0.55); backdrop-filter: blur(2px);
 }
 .cuenta-caja {
   width: min(380px, 90vw); padding: 26px 28px; border-radius: 14px; color: #f3e8dc;
