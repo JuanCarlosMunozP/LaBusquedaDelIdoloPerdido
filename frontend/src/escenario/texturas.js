@@ -9,7 +9,8 @@ export const RUTAS_TEXTURAS = {
   tierra: "textures/dirt.png",
   agua: "textures/water.png"
 };
-const METROS_POR_BALDOSA = 4;      // arena: cuanto suelo cubre una repeticion
+const METROS_POR_BALDOSA = 4;      // arena del desierto y la montaña: cuanto suelo cubre una repeticion
+const REPETICIONES_ARENA = 1;      // arena de la isla: veces que se repite en TODO el mapa (1 = una sola imagen)
 const REPETICIONES_TIERRA = 1;     // tierra: veces que se repite en TODO el mapa (1 = una sola imagen sobre todo el suelo, sin baldosas)
 
 let pendiente = null;
@@ -45,7 +46,7 @@ export function mezclaSuelo(x, z, h, tema) {
 
 // Pinta el terreno con arena y tierra mezcladas segun la altura. `geometria` ya tiene las alturas puestas.
 export function texturarSuelo(geometria, material, texturas, tema, tam) {
-  const repetir = tam / METROS_POR_BALDOSA;
+  const repetir = tema.tipo === "isla" ? REPETICIONES_ARENA : tam / METROS_POR_BALDOSA;
   const arena = texturas.arena ?? textura(256, (ctx, t) => {      // respaldo: la textura dibujada de antes
     ctx.fillStyle = "#e8e8e8";
     ctx.fillRect(0, 0, t, t);
