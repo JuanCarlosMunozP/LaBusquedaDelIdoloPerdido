@@ -1,5 +1,6 @@
 // Sonido del juego. Todo se sintetiza con Web Audio (no hay archivos),
 // asi la carpeta public/sounds queda libre para los sonidos definitivos.
+import { efectosSfx } from './sfx.js';
 
 export class Sonido {
   constructor() {
@@ -21,6 +22,7 @@ export class Sonido {
 
     this.ruido = this.crearRuido();
     this.crearBlanco();
+    this.crearEfectos();      // ruido rosa, reverberacion y compresor (sfx.js)
     this.crearOceano();
     this.crearViento();
     this.crearFuego();
@@ -152,25 +154,7 @@ export class Sonido {
     this.oasis.gain.setTargetAtTime(tipo === "oasis" ? c * c * 2.2 : 0, t, 0.3);
   }
 
-  // salpicadura al entrar o salir del agua
-  chapoteo(fuerza = 1) {
-    if (!this.ctx) return;
-    const ctx = this.ctx;
-    const t = ctx.currentTime;
-    const src = this.fuente(this.ruidoBlanco, false);
-    const f = ctx.createBiquadFilter();
-    f.type = "bandpass";
-    f.frequency.setValueAtTime(2800, t);
-    f.frequency.exponentialRampToValueAtTime(500, t + 0.45);
-    f.Q.value = 0.7;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.9 * fuerza, t);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-    src.connect(f).connect(g).connect(this.maestro);
-    src.start(t, Math.random(), 0.55);
-    this.golpeRuido(0.25, 300, 0.6 * fuerza);
-    for (let i = 0; i < 3; i++) setTimeout(() => this.gotaSuelta(), 120 + i * 90 + Math.random() * 80);
-  }
+  // (chapoteo y brazada estan en sfx.js)
 
   gotaSuelta() {
     if (!this.ctx) return;
@@ -184,26 +168,6 @@ export class Sonido {
     o.connect(g).connect(this.maestro);
     o.start(t);
     o.stop(t + 0.12);
-  }
-
-  // brazada al nadar: agua que se abre y burbujas
-  brazada() {
-    if (!this.ctx) return;
-    const ctx = this.ctx;
-    const t = ctx.currentTime;
-    const src = this.fuente(this.ruidoBlanco, false);
-    const f = ctx.createBiquadFilter();
-    f.type = "bandpass";
-    f.frequency.setValueAtTime(700, t);
-    f.frequency.exponentialRampToValueAtTime(1800, t + 0.3);
-    f.Q.value = 0.8;
-    const g = ctx.createGain();
-    g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.35, t + 0.08);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.38);
-    src.connect(f).connect(g).connect(this.maestro);
-    src.start(t, Math.random(), 0.42);
-    setTimeout(() => this.gotaSuelta(), 150 + Math.random() * 150);
   }
 
   crearViento() {
@@ -407,31 +371,7 @@ export class Sonido {
     src.start(t, Math.random() * 2, duracion + 0.05);
   }
 
-  paso() {
-    this.golpeRuido(0.09, 700 + Math.random() * 300, 0.5);
-  }
-
-  salto() {
-    this.tono(220, 0.18, "sine", 0.15, 380);
-  }
-
-  aterrizaje() {
-    this.golpeRuido(0.12, 400, 0.6);
-  }
-
-  golpe() {
-    this.golpeRuido(0.08, 2500, 0.3); // aire del puñetazo
-  }
-
-  disparo() {
-    this.golpeRuido(0.12, 1800, 1.0);
-    this.tono(180, 0.12, "square", 0.22, 60);
-  }
-
-  impacto() {
-    this.golpeRuido(0.18, 900, 1.2);
-    this.tono(90, 0.15, "square", 0.25, 50);
-  }
+  // paso, salto, aterrizaje, golpe, impacto, disparo, recogerArma y recogerBotiquin: ver sfx.js
 
   dolor() {
     this.tono(300, 0.3, "sawtooth", 0.18, 120);
@@ -462,3 +402,6 @@ export class Sonido {
     });
   }
 }
+
+// agua, pasos, saltos, golpes, disparos y objetos (en sfx.js)
+Object.assign(Sonido.prototype, efectosSfx);

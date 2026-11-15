@@ -111,7 +111,7 @@ export function crearSuministros({ scene, sonido, jugador }) {
       } else {
         tomarArma(axel);
       }
-      sonido.recoger();
+      if (s.tipo === "botiquin") sonido.recogerBotiquin(); else sonido.recogerArma();
       quitar(i);
     }
   }

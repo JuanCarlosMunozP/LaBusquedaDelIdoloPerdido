@@ -3,6 +3,7 @@
 import * as THREE from 'three';
 import { Humano, DURACION_GOLPE, INSTANTE_IMPACTO } from './personaje.js';
 import { armaAleatoria, equiparArma, zonaDeBala } from './armas.js';
+import { amortiguar } from './ayudas.js';
 
 const VELOCIDAD_BALA = 26;
 const previo = new THREE.Vector3(), punto = new THREE.Vector3();   // temporales reutilizados al mover las balas
@@ -45,7 +46,7 @@ export class Enemigo {
   recibirGolpe(dirX, dirZ, dano = 1) {
     if (!this.vivo) return false;
     this.vida -= dano;
-    this.humano.destello();
+    this.humano.destello(0.2, { x: dirX, z: dirZ });   // reacciona segun de donde le pegan
     this.empuje.set(dirX, dirZ).multiplyScalar(6);
     if (this.vida <= 0) {
       this.estado = "muerto";
@@ -237,8 +238,11 @@ export class Enemigo {
     p.y = this.mundo.altura(p.x, p.z);
 
     this.velocidad = Math.hypot(vx, vz);
+    // Solo para la animacion: la velocidad de los pasos sube y baja suavemente. El movimiento real
+    // (arriba) no cambia: antes la zancada saltaba de 1.4 a 3.4 m/s en un cuadro al empezar a perseguir.
+    this.velAnim = amortiguar(this.velAnim ?? this.velocidad, this.velocidad, 1 - Math.exp(-dt * 8));
     h.grupo.position.copy(p);
-    if (h.activo !== false) h.actualizar(dt, this.velocidad, true, tiempo);   // fuera de camara no se anima (solo se mueve)
+    if (h.activo !== false) h.actualizar(dt, this.velAnim, true, tiempo);   // fuera de camara no se anima (solo se mueve)
   }
 }
 

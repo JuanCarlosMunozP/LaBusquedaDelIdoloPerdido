@@ -277,6 +277,8 @@ export const posesHumano = {
     // el puño se cierra al levantar el brazo y se abre otra vez al bajarlo
     punoObj[at] = 0.3 + 0.7 * suave(0, 0.2, p) * (1 - suave(0.85, 1, p));
     o.torso[1] = lado * mezcla(-0.25 * prep, 0.5, e);
+    // la fuerza sale de las caderas: giran antes y menos que el torso, y asi el golpe "viene de abajo"
+    o.cadera[1] = lado * mezcla(-0.12 * prep, 0.26, e);
     o.torso[0] = 0.08 + 0.2 * e;
     o.cabeza[1] = -lado * 0.35 * e;
     // postura de pelea: da un paso hacia adelante con la pierna contraria
@@ -292,10 +294,30 @@ export const posesHumano = {
   // Dano recibido: sacudida y destello rojo.
   poseDestello(ctx) {
     const { dt, o } = ctx;
+    const dur = this.destelloDur || 0.2;
     this.destelloT -= dt;
-    const k = Math.max(0, this.destelloT / 0.2);
-    o.torso[0] += 0.3 * k;
-    o.cabeza[0] = -0.35 * k;
+    const k = Math.max(0, this.destelloT / dur);                  // el destello rojo baja en linea recta
+    // el cuerpo reacciona con un ataque rapido (~0.04 s) y una salida suave: antes arrancaba en
+    // su maximo en el primer cuadro y se veia como un tiron
+    const trans = dur - Math.max(0, this.destelloT);
+    const kc = suave(0, 0.04, trans) * (1 - suave(0.04, dur, trans));
+    const e = this.destelloEmpuje;
+    if (e) {
+      // el golpe se siente segun por donde llega: de frente echa el pecho y la cabeza atras; por la
+      // espalda lo dobla hacia adelante; de lado lo inclina (-Z = a su izquierda, +Z = a su derecha)
+      const a = e.x * Math.sin(this.direccion) + e.z * Math.cos(this.direccion);       // >0 = lo empujan hacia adelante
+      const l = e.x * Math.cos(this.direccion) - e.z * Math.sin(this.direccion);       // >0 = lo empujan hacia su izquierda
+      o.torso[0] += kc * (0.12 + 0.2 * a);
+      o.cabeza[0] = -0.3 * kc * (1 - 0.5 * a);
+      o.torso[2] += -l * 0.16 * kc;
+      o.cabeza[2] += l * 0.08 * kc;
+      o.cadera[2] += l * 0.06 * kc;
+      o.rodilla_I[0] += 0.18 * kc;
+      o.rodilla_D[0] += 0.18 * kc;
+    } else {
+      o.torso[0] += 0.3 * kc;
+      o.cabeza[0] = -0.35 * kc;
+    }
     for (const m of this.mats) m.emissive.setRGB(0.9 * k, 0.05 * k, 0.05 * k);
   },
 
@@ -304,7 +326,7 @@ export const posesHumano = {
     const { dt, o, A, s } = ctx;
     const hd = this.herida;
     hd.t += dt;
-    const w = suave(0, 0.15, hd.t) * (1 - suave(hd.dur - 0.7, hd.dur, hd.t));
+    const w = suave(0, 0.3, hd.t) * (1 - suave(hd.dur - 0.7, hd.dur, hd.t));   // entra en ~0.3 s (antes 0.15: era un tiron)
     if (hd.t >= hd.dur) this.herida = null;
     const L = THREE.MathUtils.lerp;
     const pon = (n, i, v) => { o[n][i] = L(o[n][i], v, w); };
@@ -343,6 +365,9 @@ export const posesHumano = {
         pon(malR, 0, 0.55 + rod);
       }
     }
+    // aguanta el dolor: respira agitado y le tiembla un poco el cuerpo (se desvanece junto con w)
+    o.torso[0] += Math.sin(hd.t * 9) * 0.022 * w;
+    o.cabeza[2] += Math.sin(hd.t * 5.5) * 0.03 * w;
   },
 
   // Modelos en T: baja los brazos sumando una rotacion base.

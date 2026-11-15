@@ -187,8 +187,13 @@ export class Humano {
     return true;
   }
 
-  destello(segundos = 0.2) {
+  // `empuje` = {x, z} hacia donde empuja el ataque (del atacante hacia la victima). Con el, el cuerpo
+  // reacciona segun por donde llega el golpe; sin el, reacciona igual que siempre.
+  destello(segundos = 0.2, empuje = null) {
     this.destelloT = segundos;
+    this.destelloDur = segundos;
+    const largo = empuje ? Math.hypot(empuje.x, empuje.z) : 0;
+    this.destelloEmpuje = largo > 1e-6 ? { x: empuje.x / largo, z: empuje.z / largo } : null;
   }
 
   // La caida depende de por donde llega el golpe: `empuje` = {x, z} hacia donde empuja el ataque

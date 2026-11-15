@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ARTICULACIONES } from '../src/personajes/constantes.js';
+import { ARTICULACIONES, DURACION_GOLPE, INSTANTE_IMPACTO } from '../src/personajes/constantes.js';
 import { posesHumano } from '../src/personajes/poses.js';
 import {
   ESTADOS_BASE, actualizarPesos, avanzarFase, crearPesos
@@ -291,5 +291,117 @@ describe('aterrizaje segun la caida', () => {
     const ctx = crearCtx(0, DT);
     posesHumano.ajusteAterrizaje.call({ impactoAterrizaje: 0.18 }, ctx);
     expect(ctx.o.rodilla_I[0]).toBeCloseTo(rodilla(1), 12);
+  });
+});
+
+// Fase 4: combate, daño y heridas.
+describe('golpe: los tiempos de combate no cambian', () => {
+  const golpe = (brazo, p) => {
+    const ctx = crearCtx(0, DT);
+    ctx.punoObj = { I: 0.3, D: 0.3 };
+    posesHumano.poseGolpe.call({ brazoGolpe: brazo, golpeT: 0, congelarGolpe: p }, ctx);
+    return ctx.o;
+  };
+
+  it('las constantes de combate siguen siendo 0.5 s y 0.25 s', () => {
+    expect(DURACION_GOLPE).toBe(0.5);
+    expect(INSTANTE_IMPACTO).toBe(0.25);
+  });
+
+  it('el brazo esta totalmente extendido justo en el instante de impacto', () => {
+    const p = INSTANTE_IMPACTO / DURACION_GOLPE;       // fraccion del golpe en la que conecta el daño
+    expect(golpe('D', p).hombro_D[0]).toBeCloseTo(-1.52, 6);
+    expect(golpe('I', p).hombro_I[0]).toBeCloseTo(-1.52, 6);
+  });
+
+  it('las caderas rotan con el golpe, en el mismo sentido que el torso pero menos', () => {
+    for (const [brazo, signo] of [['D', 1], ['I', -1]]) {
+      const o = golpe(brazo, 0.5);
+      expect(Math.sign(o.cadera[1])).toBe(signo);
+      expect(Math.sign(o.torso[1])).toBe(signo);
+      expect(Math.abs(o.cadera[1])).toBeLessThan(Math.abs(o.torso[1]));
+    }
+  });
+
+  it('es finito y continuo durante todo el golpe', () => {
+    let previa = null;
+    for (let i = 0; i <= 100; i++) {
+      const actual = instantanea({ o: golpe('D', i / 100) });
+      expect(actual.every(Number.isFinite)).toBe(true);
+      if (previa) expect(saltoMaximo(previa, actual)).toBeLessThan(0.5);
+      previa = actual;
+    }
+  });
+});
+
+describe('reaccion al recibir un golpe', () => {
+  const reaccion = (empuje, transcurrido, direccion = 0) => {
+    const dur = 0.2;
+    const ctx = crearCtx(0, 0);                            // dt = 0: se fija el instante exacto
+    const humano = { destelloT: dur - transcurrido, destelloDur: dur, destelloEmpuje: empuje, direccion, mats: [] };
+    posesHumano.poseDestello.call(humano, ctx);
+    return ctx.o;
+  };
+
+  it('empieza suave: en el primer instante casi no se mueve', () => {
+    expect(Math.abs(reaccion({ x: 0, z: -1 }, 0).torso[0])).toBeLessThan(1e-9);
+    expect(Math.abs(reaccion(null, 0).torso[0])).toBeLessThan(1e-9);
+  });
+
+  it('llega a su maximo rapido (~0.04 s) y vuelve a cero al terminar', () => {
+    const pico = Math.abs(reaccion(null, 0.04).torso[0]);
+    expect(pico).toBeCloseTo(0.3, 6);
+    expect(Math.abs(reaccion(null, 0.2).torso[0])).toBeLessThan(1e-9);
+    expect(Math.abs(reaccion({ x: 1, z: 0 }, 0.2).torso[2])).toBeLessThan(1e-9);
+  });
+
+  it('de frente echa el torso atras y de espaldas lo dobla hacia adelante', () => {
+    // el personaje mira a +Z (direccion 0): un golpe de frente lo empuja hacia -Z
+    const frente = reaccion({ x: 0, z: -1 }, 0.04), espalda = reaccion({ x: 0, z: 1 }, 0.04);
+    expect(frente.torso[0]).toBeLessThan(0);
+    expect(espalda.torso[0]).toBeGreaterThan(0.25);
+    expect(frente.cabeza[0]).toBeLessThan(espalda.cabeza[0]);   // la cabeza se echa mas atras de frente
+  });
+
+  it('de lado se inclina hacia donde lo empujan', () => {
+    // +X es la izquierda del personaje (mira a +Z), y torso[2] negativo = inclinarse a la izquierda
+    expect(reaccion({ x: 1, z: 0 }, 0.04).torso[2]).toBeLessThan(-0.1);
+    expect(reaccion({ x: -1, z: 0 }, 0.04).torso[2]).toBeGreaterThan(0.1);
+  });
+
+  it('respeta hacia donde mira el personaje', () => {
+    // mirando a +X (direccion = π/2), un empuje hacia -X es "de frente"
+    const frente = reaccion({ x: -1, z: 0 }, 0.04, Math.PI / 2);
+    expect(frente.torso[0]).toBeLessThan(0);
+    expect(Math.abs(frente.torso[2])).toBeLessThan(1e-6);
+  });
+
+  it('es continua entre cuadros y acotada', () => {
+    let previa = null;
+    for (let i = 0; i <= 12; i++) {
+      const actual = instantanea({ o: reaccion({ x: 0.6, z: -0.8 }, i * DT) });
+      expect(Math.max(...actual.map(Math.abs))).toBeLessThan(0.6);
+      if (previa) expect(saltoMaximo(previa, actual)).toBeLessThan(0.3);
+      previa = actual;
+    }
+  });
+});
+
+describe('herida', () => {
+  it('entra de forma gradual y no se pasa de rango', () => {
+    const o = (t) => {
+      const ctx = crearCtx(0, 0); ctx.A = 0; ctx.s = 0;
+      posesHumano.poseHerida.call({ herida: { parte: 'abdomen', lado: 'D', t, dur: 2.8 } }, ctx);
+      return ctx.o;
+    };
+    const t0 = Math.abs(o(0).torso[0]), t15 = Math.abs(o(0.15).torso[0]), t30 = Math.abs(o(0.3).torso[0]);
+    expect(t0).toBeLessThan(t15);                 // a los 0.15 s aun no esta a pleno
+    expect(t15).toBeLessThan(t30);
+    expect(t30).toBeGreaterThan(0.45);            // y a los 0.3 s ya sostiene la herida
+    for (const parte of ['abdomen', 'brazo', 'pierna', 'rodilla']) {
+      const ctx = crearCtx(0, 0); ctx.A = 0.5; ctx.s = 0.5;
+      posesHumano.poseHerida.call({ herida: { parte, lado: 'I', t: 1, dur: 3 } }, ctx);
+      expect(instantanea(ctx).every(Number.isFinite)).toBe(true);
+    }
   });
 });

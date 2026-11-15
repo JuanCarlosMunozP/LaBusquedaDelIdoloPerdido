@@ -12,6 +12,7 @@ import { crearVista } from './juego/camara.js';
 import { crearFrio } from './juego/frio.js';
 import { resolverGolpe, dispararJugador } from './juego/combate.js';
 import { crearSuministros } from './juego/suministros.js';
+import { crearInventario } from './juego/inventario.js';
 import { crearCinematicaAvion } from './escenario/cinematica.js';
 import { crearCinematicaPlaya } from './escenario/cinematicaPlaya.js';
 import { gestionarPersonajes, crearResolucionDinamica } from './juego/detalle.js';
@@ -58,6 +59,7 @@ let misionesAceptadas = false;
 let dialogo = null;                   // { lineas, i } mientras Daniel habla
 let puedeTeletransportar = true;      // enfriamiento del portal (3 s, como en la clase)
 const sonido = new Sonido();
+const inventario = crearInventario();   // sombrero puesto/guardado: persiste al morir y al recargar
 const gltfLoader = new GLTFLoader();
 
 let estado = "cargando";     // cargando | inicio | jugando | pausa | victoria | derrota
@@ -382,7 +384,7 @@ function atacar() {
   if (!axel.golpear()) return;
   jugador.golpeCooldown = DURACION_GOLPE + 0.05;
   jugador.golpePendiente = INSTANTE_IMPACTO; // el puño conecta cuando el brazo se estira
-  sonido.golpe();
+  sonido.golpe(jugador.arma?.id);   // el sonido del golpe cambia segun el arma
 }
 
 // `mortal`: balazo en cabeza o pecho (mata al instante, aunque este invulnerable); `zona`: donde pego
@@ -392,7 +394,7 @@ function danar(cantidad, mortal = false, zona = "", empuje = null, herida = null
   if (zona) decir(`Disparo en ${zona}`, 2);
   jugador.vida = mortal ? 0 : Math.max(0, jugador.vida - cantidad);
   jugador.invulnerable = 0.6;
-  axel.destello();
+  axel.destello(0.2, empuje);   // el cuerpo reacciona segun por donde llega el golpe
   sonido.dolor();
   vista.sacudida = 0.3;
   hud.dano.style.opacity = 1;
@@ -531,7 +533,7 @@ function moverJugador(dt) {
   jugador.vy -= 19 * dt;
   jugador.pos.y += jugador.vy * dt;
   if (jugador.pos.y <= suelo) {
-    if (!jugador.enSuelo && jugador.vy < -6) sonido.aterrizaje();
+    if (!jugador.enSuelo && jugador.vy < -6) sonido.aterrizaje(Math.min(1.6, -jugador.vy / 9));   // mas fuerte si cae de mas alto
     jugador.pos.y = suelo;
     jugador.vy = 0;
     jugador.enSuelo = true;
@@ -553,14 +555,14 @@ function actualizarAnimacionJugador(dt) {
   }
   axel.grupo.position.copy(jugador.pos);
   axel.actualizar(dt, velocidadH, jugador.enSuelo, tiempo, jugador.vy, jugador.nadando && mundo.agua.tipo,   // "mar" = crol, "oasis" = braza
-      // sombrero: no en la montaña; se la pone tras la cinematica
-      mundo.tema.sombrero === false ? "oculto" : nivel > 0 || cinematicasVistas.has(0) ? "cabeza" : "mano");
+      // sombrero: lo decide el inventario (no en la montaña; se lo pone tras la cinematica)
+      inventario.modoSombrero({ permitido: mundo.tema.sombrero !== false, tiene: nivel > 0 || cinematicasVistas.has(0) }));
 
   // pasos sincronizados con las piernas
   const medioPaso = Math.floor(axel.fase / Math.PI);
   if (medioPaso !== pasoAnterior) {
     pasoAnterior = medioPaso;
-    if (jugador.enSuelo && !jugador.nadando && velocidadH > 1) sonido.paso();
+    if (jugador.enSuelo && !jugador.nadando && velocidadH > 1) sonido.paso(superficiePaso(), velocidadH > 4.8);
   }
   // brazadas al nadar (una cada ~0.6 s, mas seguidas si nada rapido)
   if (jugador.nadando && velocidadH > 0.4 && tiempo > proximaBrazada) {
@@ -568,6 +570,14 @@ function actualizarAnimacionJugador(dt) {
     sonido.brazada();
   }
   return velocidadH;
+}
+
+// Superficie bajo los pies de Max, para que los pasos suenen distinto en arena, pasto o nieve
+function superficiePaso() {
+  const tipo = mundo.tema.tipo, y = jugador.pos.y;
+  if (tipo === "desierto") return "arena";
+  if (tipo === "montana") return y >= 6 ? "nieve" : "pasto";
+  return y < 0.9 ? "arena" : "pasto";      // isla: arena junto al agua, pasto tierra adentro
 }
 
 // 0..1: 1 si Max esta en el agua, baja hasta 0 a ~22 m de la orilla mas cercana

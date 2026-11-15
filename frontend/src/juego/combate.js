@@ -7,7 +7,7 @@ const ALCANCE_PISTOLA = 18;
 
 function danarEnemigo(e, dx, dz, dano, { jugador, sonido, vista, obj }) {
   const murio = e.recibirGolpe(dx, dz, dano);
-  sonido.impacto();
+  sonido.impacto(jugador.arma?.id);
   vista.sacudida = 0.12;
   if (murio) {
     obj.derrotados++;
