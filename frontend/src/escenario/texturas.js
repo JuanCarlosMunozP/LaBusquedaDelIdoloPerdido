@@ -9,7 +9,8 @@ export const RUTAS_TEXTURAS = {
   tierra: "textures/dirt.png",
   agua: "textures/water.png"
 };
-const METROS_POR_BALDOSA = 4;      // cuanto suelo cubre una repeticion de la textura
+const METROS_POR_BALDOSA = 4;      // arena: cuanto suelo cubre una repeticion
+const REPETICIONES_TIERRA = 1;     // tierra: veces que se repite en TODO el mapa (1 = una sola imagen sobre todo el suelo, sin baldosas)
 
 let pendiente = null;
 
@@ -76,13 +77,14 @@ export function texturarSuelo(geometria, material, texturas, tema, tam) {
 
   material.onBeforeCompile = (shader) => {
     shader.uniforms.tierraMap = { value: tierra };
+    shader.uniforms.tierraEscala = { value: REPETICIONES_TIERRA / repetir };   // vMapUv ya trae la repeticion de la arena
     shader.vertexShader = shader.vertexShader
       .replace("#include <common>", "#include <common>\nattribute float mezcla;\nvarying float vMezcla;")
       .replace("#include <begin_vertex>", "#include <begin_vertex>\nvMezcla = mezcla;");
     shader.fragmentShader = shader.fragmentShader
       .replace("#include <common>", "#include <common>\nuniform sampler2D tierraMap;\nvarying float vMezcla;")
       .replace("#include <map_fragment>",
-        "diffuseColor *= mix(texture2D(map, vMapUv), texture2D(tierraMap, vMapUv), vMezcla);");
+        "diffuseColor *= mix(texture2D(map, vMapUv), texture2D(tierraMap, vMapUv * tierraEscala), vMezcla);");
   };
 }
 
