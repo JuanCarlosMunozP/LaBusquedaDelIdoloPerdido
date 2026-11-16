@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { altura, OASIS } from './terreno.js';
 import { dispositivo } from '../interfaz/dispositivo.js';
-import { VERSION_RECURSOS } from '../juego/version.js';
+import { cargarModelo } from './recursos.js';
 
 // Cuanto de la vegetacion se dibuja segun la calidad (en movil se ve menos pasto y menos palmeras: son lo mas pesado del paisaje)
 const DENSIDAD = { alta: { palmas: 16, pasto: 1 }, media: { palmas: 9, pasto: 0.55 }, baja: { palmas: 6, pasto: 0.3 } }[dispositivo.calidad];
@@ -10,7 +10,7 @@ const DENSIDAD = { alta: { palmas: 16, pasto: 1 }, media: { palmas: 9, pasto: 0.
 // Coloca todo en la escena y registra los troncos en `obstaculos` para las colisiones.
 export async function crearVegetacion({ scene, gltfLoader, tema, rnd, obstaculos, fogata, matMadera, sombra }) {
   // ====== PALMERAS (modelo hecho en Blender)
-  const palmera = (await gltfLoader.loadAsync("/textures/palm-tree.glb?v=" + VERSION_RECURSOS)).scene;
+  const palmera = await cargarModelo(gltfLoader, "palmera");      // se baja una sola vez (recursos.js)
   // Palmeras, pinos y cactus son InstancedMesh: todos los de un tipo comparten geometria y material,
   // asi que cada parte (tronco, hojas, conos...) se dibuja en una sola llamada y no una por arbol.
   // `modelo` = grupo plantilla; `instancias(modelo)` guarda las matrices de cada copia colocada.

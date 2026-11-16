@@ -11,7 +11,7 @@ import { crearVegetacion } from './vegetacion.js';
 import { crearPortal } from './portal.js';
 import { crearNieve } from './nieve.js';
 import { dispositivo } from '../interfaz/dispositivo.js';
-import { VERSION_RECURSOS } from '../juego/version.js';
+import { cargarModelo } from './recursos.js';
 
 export { liberar } from './utilidades.js';
 
@@ -389,7 +389,7 @@ export async function crearMundo(scene, gltfLoader, tema = TEMAS[0]) {
   await crearVegetacion({ scene, gltfLoader, tema, rnd, obstaculos, fogata, matMadera, sombra });
 
   // ====== IDOLOS DORADOS (modelo hecho en Blender)
-  const modeloIdolo = (await gltfLoader.loadAsync("/models/idolo.glb?v=" + VERSION_RECURSOS)).scene;
+  const modeloIdolo = await cargarModelo(gltfLoader, "idolo");      // se baja una sola vez (recursos.js)
   sombra(modeloIdolo);
 
   const texBrillo = textura(64, (ctx, t) => {

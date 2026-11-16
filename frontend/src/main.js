@@ -16,6 +16,8 @@ import { VERSION_RECURSOS } from './juego/version.js';
 import { NIVELES } from './juego/datos.js';
 import { g, jugador, enemigos } from './juego/estadoJuego.js';
 import { renderer, scene, camera, resolucion, bloquearRaton } from './juego/escena.js';
+import { precargarRecursos } from './escenario/recursos.js';
+import { cargarTexturas } from './escenario/texturas.js';
 import { sonido, partida, inventario, suministros, vista, gltfLoader, objetosSueltos } from './juego/servicios.js';
 import './juego/controles.js';
 import { danar, soltarObjetosDeMax } from './juego/combateJugador.js';
@@ -83,7 +85,8 @@ async function iniciar() {
   g.axel.direccion = Math.PI;
   g.axel.grupo.rotation.y = Math.PI;
 
-  await cargarReglas(ARMAS);                   // tiempos de golpe, daños y suministros los define el servidor
+  precargarRecursos(gltfLoader, cargarTexturas);   // palmera, ídolo y texturas bajan mientras el jugador inicia sesión
+  await cargarReglas(ARMAS);                 // tiempos de golpe, daños y suministros los define el servidor
   // Modo de prueba: index.html#demo  o  index.html#demo=x,z (empieza sin pulsar "Jugar")
   if (esModoDev && location.hash.startsWith("#demo")) {
     await entrarAlJuego();
