@@ -40,7 +40,7 @@ function crearPistola() {
 }
 
 // Balas que caben en el cargador de la pistola (lo mismo para Max y los mercenarios).
-export const BALAS_POR_CARGADOR = 6;
+export const BALAS_POR_CARGADOR = 3;
 export const DURACION_RECARGA = 1.7;   // segundos
 
 // Mueve las piezas de la pistola segun el avance p (0..1) de la recarga: el cargador sale hacia abajo,

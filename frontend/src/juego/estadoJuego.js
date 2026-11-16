@@ -45,6 +45,7 @@ export const jugador = {
   nadoAtras: false,     // nada de espaldas (avanza hacia la camara)
   arma: null,           // arma de un kit (null = puños)
   municion: 0,
+  recargando: false,
   cargador: null      // balas en el cargador de la pistola (null = lleno; ver recarga.js)
 };
 

@@ -46,7 +46,8 @@ export function crearPosesRecarga() {
       o.hombro_I[2] = L(o.hombro_I[2], h2, izq);
       o.codo_I[1] = L(o.codo_I[1], c1, izq);
       o.torso[0] += 0.1 * entra;                                          // se encorva sobre el arma
-      o.torso[1] = L(o.torso[1], 0.05, entra);
+      o.torso[1] = L(o.torso[1], -0.55, entra);          // abre el cuerpo para que el arma se vea de espaldas
+      o.cabeza[1] = L(o.cabeza[1], 0.35, entra);
       ctx.bob -= 0.02 * entra;
       animarRecargaArma(this.armaMalla, p);
     }

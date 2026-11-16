@@ -27,7 +27,7 @@ export function crearSuministros({ scene, sonido, jugador, inventario, sincroniz
     if (jugador.arma) {
       const enCargador = Math.min(jugador.cargador ?? BALAS_POR_CARGADOR, jugador.municion);
       panel.textContent = jugador.arma.tipo === "pistola"
-        ? `Arma: ${jugador.arma.id} · ${enCargador} / ${jugador.municion - enCargador} balas` : `Arma: ${jugador.arma.id}`;
+        ? (jugador.recargando ? `Arma: ${jugador.arma.id} · Recargando…` : `Arma: ${jugador.arma.id} · ${enCargador} / ${jugador.municion - enCargador} balas`) : `Arma: ${jugador.arma.id}`;
     }
   };
 

@@ -74,7 +74,7 @@ def test_new_player_has_default_inventory():
         _registrar(client)
         res = client.get("/api/v1/inventory")
         assert res.status_code == 200
-        assert res.json() == {"sombrero": "puesto", "enMano": None, "mochila": []}
+        assert res.json() == {"sombrero": "guardado", "enMano": None, "mochila": []}
 
 
 def test_hat_and_backpack_persist_between_sessions():
@@ -100,8 +100,8 @@ def test_inventories_are_isolated_between_players():
     with TestClient(app) as a, TestClient(app) as b:
         csrf_a = _registrar(a, "Jugador_A")
         _registrar(b, "Jugador_B")
-        a.put("/api/v1/inventory", json={"sombrero": "guardado"}, headers=csrf_a)
-        assert b.get("/api/v1/inventory").json()["sombrero"] == "puesto"
+        a.put("/api/v1/inventory", json={"sombrero": "puesto"}, headers=csrf_a)
+        assert b.get("/api/v1/inventory").json()["sombrero"] == "guardado"   # el defecto: lo lleva guardado
 
 
 def test_invalid_inventory_is_rejected_and_audited():
@@ -118,7 +118,7 @@ def test_invalid_inventory_is_rejected_and_audited():
         for cuerpo in malos:
             assert client.put("/api/v1/inventory", json=cuerpo, headers=csrf).status_code in (400, 422), cuerpo
         # nada se guardo
-        assert client.get("/api/v1/inventory").json() == {"sombrero": "puesto", "enMano": None, "mochila": []}
+        assert client.get("/api/v1/inventory").json() == {"sombrero": "guardado", "enMano": None, "mochila": []}
         # y la regla de dominio (no la de formato) dejo rastro de auditoria
         logs = client.get(
             "/api/v1/security/audit-logs", headers={"X-Admin-Audit-Token": "token-admin-auditoria-2026"}

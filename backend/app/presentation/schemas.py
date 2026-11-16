@@ -47,7 +47,7 @@ class WeaponStackPayload(StrictBaseModel):
 
 
 class InventoryPayload(StrictBaseModel):
-    sombrero: Literal["puesto", "guardado"] = "puesto"
+    sombrero: Literal["puesto", "guardado"] = "guardado"
     enMano: WeaponStackPayload | None = None
     mochila: list[WeaponStackPayload] = Field(default_factory=list, max_length=3)
 

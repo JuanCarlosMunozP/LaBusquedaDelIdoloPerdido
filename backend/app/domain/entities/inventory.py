@@ -38,7 +38,7 @@ class PlayerInventory:
     """
 
     user_id: str
-    hat_state: str = "puesto"
+    hat_state: str = "guardado"
     equipped: WeaponStack | None = None
     backpack: list[WeaponStack] = field(default_factory=list)
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))

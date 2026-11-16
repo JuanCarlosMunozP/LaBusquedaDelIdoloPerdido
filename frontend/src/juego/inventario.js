@@ -29,7 +29,7 @@ function normalizar(arma, municion) {
 }
 
 export function crearInventario(storage = almacen()) {
-  let sombrero = "puesto";
+  let sombrero = "guardado";   // por defecto lo lleva guardado: ponérselo es opcional (H o inventario)
   try {
     const guardado = JSON.parse(storage?.getItem(CLAVE) ?? "null");
     if (guardado && ESTADOS.includes(guardado.sombrero)) sombrero = guardado.sombrero;
@@ -68,7 +68,7 @@ export function crearInventario(storage = almacen()) {
     // Con cuenta: carga lo guardado en el servidor y desde ahora guarda alla. `catalogo` = ARMAS por id.
     // Devuelve el arma que quedo en la mano (para mostrarla) o null.
     conectar(guardado, catalogo, guardar) {
-      sombrero = ESTADOS.includes(guardado?.sombrero) ? guardado.sombrero : "puesto";
+      sombrero = ESTADOS.includes(guardado?.sombrero) ? guardado.sombrero : "guardado";
       mochila.length = 0;
       for (const i of guardado?.mochila ?? []) {
         const arma = catalogo[i.arma], item = normalizar(arma, i.municion);

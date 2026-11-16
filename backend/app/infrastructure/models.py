@@ -53,7 +53,7 @@ class PlayerInventoryModel(Base):
     user_id: Mapped[str] = mapped_column(
         String(36), ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
-    hat_state: Mapped[str] = mapped_column(String(16), default="puesto", nullable=False)
+    hat_state: Mapped[str] = mapped_column(String(16), default="guardado", nullable=False)
     equipped_json: Mapped[str] = mapped_column(Text, default="null", nullable=False)
     backpack_json: Mapped[str] = mapped_column(Text, default="[]", nullable=False)
     updated_at: Mapped[datetime] = mapped_column(

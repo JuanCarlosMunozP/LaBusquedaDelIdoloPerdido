@@ -20,6 +20,7 @@ export function balasEnCargador() {
 export function cancelarRecarga() {
   t = -1;
   armaAlIniciar = null;
+  jugador.recargando = false;
   if (g.axel) g.axel.recarga = 0;
 }
 
@@ -29,7 +30,9 @@ export function iniciarRecarga() {
   const enCargador = balasEnCargador();
   if (enCargador >= TAM || jugador.municion <= enCargador) return false;
   t = 0;
+  jugador.recargando = true;
   armaAlIniciar = jugador.arma;
+  suministros.refrescarPanel();
   sonido.recargar(DURACION_RECARGA);
   return true;
 }

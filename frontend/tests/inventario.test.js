@@ -59,12 +59,17 @@ describe('inventario: mochila de armas', () => {
 });
 
 describe('inventario: sombrero', () => {
-  it('por defecto lo lleva puesto una vez que lo tiene', () => {
-    expect(crearInventario(memoria()).modoSombrero(CON)).toBe('cabeza');
+  it('por defecto lo lleva guardado (ponerselo es opcional) y, si se lo pone, va en la cabeza', () => {
+    const inv = crearInventario(memoria());
+    expect(inv.sombrero).toBe('guardado');
+    expect(inv.modoSombrero(CON)).toBe('oculto');
+    inv.fijarSombrero('puesto');
+    expect(inv.modoSombrero(CON)).toBe('cabeza');
   });
 
-  it('antes de la cinematica lo lleva en la mano y donde no se permite, oculto', () => {
+  it('antes de la cinematica, si se lo puso, lo lleva en la mano; donde no se permite, oculto', () => {
     const inv = crearInventario(memoria());
+    inv.fijarSombrero('puesto');
     expect(inv.modoSombrero({ tiene: false, permitido: true })).toBe('mano');
     expect(inv.modoSombrero({ tiene: true, permitido: false })).toBe('oculto');
     expect(inv.modoSombrero({ tiene: false, permitido: false })).toBe('oculto');
@@ -87,20 +92,21 @@ describe('inventario: sombrero', () => {
   it('puesto tambien persiste, y alternar cambia entre ambos', () => {
     const m = memoria();
     const inv = crearInventario(m);
-    expect(inv.alternarSombrero()).toBe('guardado');
     expect(inv.alternarSombrero()).toBe('puesto');
+    expect(inv.alternarSombrero()).toBe('guardado');
+    inv.alternarSombrero();
     expect(crearInventario(m).sombrero).toBe('puesto');
   });
 
   it('ignora estados invalidos y datos corruptos', () => {
     const inv = crearInventario(memoria());
-    expect(inv.fijarSombrero('volando')).toBe('puesto');
-    expect(crearInventario(memoria({ 'idolo.inventario.v1': '{{no json' })).sombrero).toBe('puesto');
-    expect(crearInventario(memoria({ 'idolo.inventario.v1': '{"sombrero":"x"}' })).sombrero).toBe('puesto');
+    expect(inv.fijarSombrero('volando')).toBe('guardado');
+    expect(crearInventario(memoria({ 'idolo.inventario.v1': '{{no json' })).sombrero).toBe('guardado');
+    expect(crearInventario(memoria({ 'idolo.inventario.v1': '{"sombrero":"x"}' })).sombrero).toBe('guardado');
   });
 
   it('funciona sin almacenamiento (modo privado) y si guardar lanza error', () => {
-    expect(crearInventario(null).alternarSombrero()).toBe('guardado');
+    expect(crearInventario(null).alternarSombrero()).toBe('puesto');
     const roto = { getItem: () => { throw new Error('bloqueado'); }, setItem: () => { throw new Error('lleno'); } };
     const inv = crearInventario(roto);
     expect(() => inv.fijarSombrero('guardado')).not.toThrow();
@@ -140,7 +146,7 @@ describe('inventario: guardado en la cuenta (servidor)', () => {
       enMano: { arma: 'pistola', municion: 0 },
       mochila: [{ arma: 'bazuca' }, { arma: 'puños' }, ...Array(5).fill({ arma: 'cuchillo', municion: 0 })]
     }, catalogo, () => {});
-    expect(inv.sombrero).toBe('puesto');
+    expect(inv.sombrero).toBe('guardado');
     expect(j.arma).toBeNull();
     expect(inv.mochila).toHaveLength(MAX_MOCHILA);
   });
@@ -174,7 +180,7 @@ describe('inventario: guardado en la cuenta (servidor)', () => {
     inv.conectar({}, catalogo, guardar);
     j.arma = null; j.municion = 0;                       // perdio el arma al morir
     inv.guardarAhora();
-    expect(guardar).toHaveBeenCalledWith({ sombrero: 'puesto', enMano: null, mochila: [] });
+    expect(guardar).toHaveBeenCalledWith({ sombrero: 'guardado', enMano: null, mochila: [] });
   });
 
   it('sin cuenta (invitado) solo recuerda el sombrero en el navegador', () => {
@@ -191,6 +197,8 @@ describe('guardar el sombrero antes de la cinematica', () => {
     const memoria = new Map();
     const storage = { getItem: (k) => memoria.get(k) ?? null, setItem: (k, v) => memoria.set(k, v) };
     const inv = crearInventario(storage);
+    expect(inv.modoSombrero({ tiene: false, permitido: true })).toBe('oculto');   // empieza guardado
+    inv.fijarSombrero('puesto');
     expect(inv.modoSombrero({ tiene: false, permitido: true })).toBe('mano');
     inv.fijarSombrero('guardado');
     expect(inv.modoSombrero({ tiene: false, permitido: true })).toBe('oculto');
