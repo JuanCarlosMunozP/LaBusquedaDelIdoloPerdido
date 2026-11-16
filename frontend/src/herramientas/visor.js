@@ -57,7 +57,7 @@ addEventListener("keydown", (ev) => {
   pose = { 1: "reposo", 2: "caminar", 3: "correr", 4: "saltar", 5: "golpear", 6: "nadar", 7: "apuntar", 8: "morir" }[ev.key] || pose;
 });
 
-let yaw = vista === "lado" ? 1.2 : vista === "manos" ? 1.4 : vista === "perfil" || vista === "perfil2" ? 0.9 : 0.25, pitch = 0.08, dist = 3.2, ultimo = performance.now();
+let yaw = vista === "lado" || vista === "suelo" ? 1.2 : vista === "manos" ? 1.4 : vista === "perfil" || vista === "perfil2" ? 0.9 : 0.25, pitch = vista === "suelo" ? 0.7 : 0.08, dist = vista === "suelo" ? 4.6 : 3.2, ultimo = performance.now();
 let t = 0, arrastrando = false;
 addEventListener("pointerdown", () => (arrastrando = true));
 addEventListener("pointerup", () => (arrastrando = false));
@@ -81,9 +81,10 @@ function animar() {
   for (const h of [axel, enemigo]) {
     if (pose === "golpear" && fijo) { h.congelarGolpe = +fijo.split("=")[1]; if (h.golpeT < 0) h.golpear(); }
     else if (pose === "golpear" && h.golpeT < 0) h.golpear();
-    if (pose === "morir" && !h.muerto) h.morir();   // cada vez cae distinto (atras, adelante o de lado)
+    if (pose === "morir" && !h.muerto) h.morir(resto.find((r) => r.startsWith("c="))?.split("=")[1]);
+    if (pose === "morir" && h.muerto && h.muerteT === 0 && resto.some((r) => r.startsWith("e="))) h.estiloMuerte = +resto.find((r) => r.startsWith("e=")).split("=")[1];   // cada vez cae distinto (atras, adelante o de lado)
     h.apuntando = pose === "apuntar" || pose === "recargar" ? 1 : 0;
-    if (h === enemigo) h.grupo.visible = pose !== "recargar";
+    if (h === enemigo) h.grupo.visible = pose !== "recargar" && !(pose === "morir" && resto.some((r) => r.startsWith("c=")));
     if (pose === "recargar") {      // pistola en ambos y la recarga en bucle (o fija con &p=0.4)
       if (!h.armaMalla) equiparArma(h, ARMAS.pistola);
       h.recarga = fijo ? Math.max(0.001, +fijo.split("=")[1]) : Math.max(0.001, (t % 2.2) / 1.7 % 1.2);
@@ -94,7 +95,7 @@ function animar() {
 
   const foco = vista === "cara" || vista === "perfil" ? new THREE.Vector3(-0.7, 1.65, 0)
     : vista === "cara2" || vista === "perfil2" ? new THREE.Vector3(0.7, 1.65, 0)
-    : vista === "manos" ? new THREE.Vector3(-0.44, 0.88, 0) : new THREE.Vector3(0, 0.95, 0);
+    : vista === "manos" ? new THREE.Vector3(-0.44, 0.88, 0) : vista === "suelo" ? new THREE.Vector3(0, 0.1, 0) : new THREE.Vector3(0, 0.95, 0);
   const d = ["cara", "perfil", "cara2", "perfil2"].includes(vista) ? 1.1 : vista === "manos" ? 0.55 : dist;
   camera.position.set(
     foco.x + Math.sin(yaw) * Math.cos(pitch) * d,

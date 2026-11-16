@@ -208,6 +208,7 @@ export class Humano {
     if (!this.muerto) this.alMorir?.(empuje);          // main.js lo usa para soltar arma y sombrero
     this.muerto = true;
     this.herida = null;
+    this.estiloMuerte = Math.floor(Math.random() * 3);   // como quedan los brazos (ver poseMuerte)
     this.ladoCaida = Math.random() < 0.5 ? -1 : 1;     // +1 = cae sobre su lado derecho, -1 = sobre el izquierdo
     if (!caida && empuje && (empuje.x || empuje.z)) {
       const adelante = empuje.x * Math.sin(this.direccion) + empuje.z * Math.cos(this.direccion);

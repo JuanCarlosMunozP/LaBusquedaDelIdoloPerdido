@@ -361,31 +361,43 @@ export const posesHumano = {
     o.cabeza[2] = tipo === "lado" ? (0.8) * lado * suelta : 0;
     // piernas un poco abiertas, como en una persona tendida
     o.muslo_I[2] = -0.06 * suelta; o.muslo_D[2] = 0.06 * suelta;
-    // los brazos cuelgan sueltos junto al cuerpo (nada de brazos levantados al quedar en el suelo)
-    // La reacción de los brazos tiene un pequeño retraso y un balanceo amortiguado:
-    // primero acompañan el desequilibrio y luego pierden tensión al tocar el suelo.
+    // Brazos: mientras cae se agitan (cada uno con su retraso, asi no se mueven a la vez) y al llegar
+    // al suelo se aflojan en una postura distinta cada vez (this.estiloMuerte: 0 abiertos, 1 una mano
+    // en el pecho, 2 un brazo doblado junto a la cabeza). Siempre con el codo doblado: nada de brazos
+    // estirados y tiesos. out = +1 en el brazo izquierdo, -1 en el derecho (hacia donde se abre).
     const anticipa = suave(0, 0.18, this.muerteT) * (1 - suave(0.82, 1, this.muerteT));
     const rebote = Math.sin(this.muerteT * Math.PI * 3.2) * anticipa;
     const direccion = alFrente ? 1 : deEspaldas ? -1 : lado * 0.45;
-    const retrasoI = Math.max(0, this.muerteT - 0.08);
-    const retrasoD = Math.max(0, this.muerteT - 0.14);
-    o.hombro_I[0] = -0.35 * flexion * (1 - suelta) + direccion * (0.52 * rebote - 0.24 * suelta);
-    o.hombro_D[0] = -0.35 * flexion * (1 - suelta) + direccion * (0.43 * Math.sin(retrasoD * Math.PI * 3.2) * anticipa - 0.18 * suelta);
-    // (este bloque reemplaza los valores de arriba, asi que hay que volver a sumar el ajuste del
-    // modelo en T: sin el, los brazos quedaban abiertos en el suelo)
-    const baja = this.bajarBrazos || 0;
-    o.hombro_I[2] = 0.08 + 0.2 * suelta - baja - 0.2 * lado * rebote;
-    o.hombro_D[2] = -0.08 - 0.2 * suelta + baja + 0.17 * lado * rebote;
-    o.codo_I[1] = -0.4 * flexion + 0.15 * suelta - 0.36 * Math.max(0, Math.sin(retrasoI * Math.PI * 3.2)) * anticipa;
-    o.codo_D[1] = 0.4 * flexion - 0.15 * suelta + 0.3 * Math.max(0, Math.sin(retrasoD * Math.PI * 3.2)) * anticipa;
-    if (tipo === "lado") {
-      // de lado, el brazo de abajo no puede quedar colgando (levantaria el cuerpo): se
-      // dobla hacia el frente y el de arriba queda pegado al costado
-      const abajo = lado < 0 ? "I" : "D", arriba = lado < 0 ? "D" : "I", sg = abajo === "D" ? 1 : -1;
-      o["hombro_" + abajo][0] = -1.1 * suelta;
-      o["hombro_" + abajo][2] = sg * (-0.08 + 0.2 * suelta) - sg * baja;
-      o["codo_" + abajo][1] = sg * (0.4 * flexion + 0.9 * suelta);
-      o["hombro_" + arriba][2] = -sg * (0.1 * suelta) + sg * baja;
+    const baja = this.bajarBrazos || 0;           // ajuste del modelo en T: sin el, los brazos quedan abiertos
+    const estilo = this.estiloMuerte ?? 0;
+    const protagonista = lado > 0 ? "D" : "I";    // el brazo que hace el gesto (pecho o cabeza)
+    for (const nom of ["I", "D"]) {
+      const out = nom === "I" ? 1 : -1;
+      const retraso = Math.max(0, this.muerteT - (nom === "I" ? 0.08 : 0.14));
+      const ola = Math.sin(retraso * Math.PI * 3.2) * anticipa;
+      // en el aire: el cuerpo acompana el desequilibrio y el codo se dobla y estira un poco
+      const v0 = -0.35 * flexion + direccion * 0.5 * ola;
+      const vA = 0.08 - 0.19 * lado * out * rebote;
+      const vC = 0.4 * flexion + 0.33 * Math.max(0, ola);
+      // en el suelo
+      let f0, fA, fC;
+      const gesto = nom === protagonista;
+      if (tipo === "lado") {
+        // de lado, el brazo de abajo no puede quedar colgando (levantaria el cuerpo): va doblado
+        // bajo la cabeza y el de arriba descansa sobre la cadera
+        const abajo = lado < 0 ? "I" : "D";
+        if (nom === abajo) { f0 = -0.9; fA = 0.25; fC = 1.5; }
+        else { f0 = -0.5; fA = -0.35; fC = 1.1; }
+      } else if (estilo === 1 && gesto) {            // se agarra la herida: la mano sobre el pecho o el abdomen
+        f0 = alFrente ? 0.3 : -0.75; fA = alFrente ? 0.35 : -0.5; fC = alFrente ? 1.3 : 1.7;
+      } else if (estilo === 2 && gesto) {            // un brazo doblado junto a la cabeza, como buscando apoyo
+        f0 = alFrente ? -2.1 : -2.4; fA = 0.7; fC = 1.0;
+      } else {                                        // abierto, flojo y algo doblado; cada lado distinto
+        f0 = alFrente ? 0.25 : 0.12; fA = out === 1 ? 0.55 : 0.8; fC = alFrente ? 0.9 : 0.35 + 0.2 * (out === 1 ? 1 : 0);
+      }
+      o["hombro_" + nom][0] = v0 * (1 - suelta) + f0 * suelta;
+      o["hombro_" + nom][2] = out * (vA * (1 - suelta) + fA * suelta - baja);
+      o["codo_" + nom][1] = -out * (vC * (1 - suelta) + fC * suelta);
     }
     ctx.bob = 0;
   },
