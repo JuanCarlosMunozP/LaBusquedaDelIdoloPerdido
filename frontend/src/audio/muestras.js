@@ -70,7 +70,7 @@ export const efectosMuestras = {
       this.fuegoSint?.gain.setTargetAtTime(0.08, this.ctx.currentTime, 0.5);
     }
     if (m.oasis && this.oasis) {      // oasis real: el volumen lo da this.oasis (ajustarAgua); el murmullo sintetico se calla
-      this.bucleMuestra(m.oasis, this.oasis, 0.4);
+      this.bucleMuestra(m.oasis, this.oasis, 0.7);
       this.gOasisSint?.gain.setTargetAtTime(0.05, this.ctx.currentTime, 0.5);
     }
     if (m.desierto) {                 // viento del desierto: canal propio, se abre solo en el nivel del desierto

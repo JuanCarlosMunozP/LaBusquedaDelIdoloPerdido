@@ -184,6 +184,10 @@ const DIRS_AGUA = Array.from({ length: 8 }, (_, i) => [Math.cos(i * Math.PI / 4)
 function cercaniaAgua() {
   const { x, z } = jugador.pos;
   if (jugador.nadando || g.mundo.altura(x, z) < g.mundo.agua.nivel) return 1;
+  if (g.mundo.oasis) {      // el murmullo del oasis se oye desde lejos: crece poco a poco al acercarse al estanque
+    const d = Math.hypot(x - g.mundo.oasis.x, z - g.mundo.oasis.z);
+    return Math.max(0, Math.min(1, 1 - (d - 10) / 60));
+  }
   for (let d = 2; d <= 22; d += d < 8 ? 2 : 4) {
     for (const [dx, dz] of DIRS_AGUA) {
       if (g.mundo.altura(x + dx * d, z + dz * d) < g.mundo.agua.nivel) return 1 - d / 24;

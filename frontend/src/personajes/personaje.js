@@ -113,6 +113,7 @@ export class Humano {
     this.muerto = false;
     this.herida = null;
     this.ojosCerrados = false;   // true = inconsciente: parpados cerrados fijos
+    this.sentado = false;        // true = sentado en el sillon (escena final, poseSentado)
     this.tendido = false;        // true = boca arriba, flojo, sin fuerzas (cinematicas del naufragio)
     this.direccion = 0;     // hacia donde mira (rad)
     this.alturaCuerpo = 0;  // altura actual del cuerpo respecto al grupo (ya con el anclaje al suelo)
@@ -258,6 +259,7 @@ export class Humano {
     // capas que se suman encima, en este orden
     if (this.estiloAndar) this.#calcularPose(ctx, posesHumano.poseEstiloAndar);
     if (this.remando > 0) this.#calcularPose(ctx, posesHumano.poseRemar);
+    if (this.sentado) this.#calcularPose(ctx, posesHumano.poseSentado);     // escena final: en el sillon frente a la fogata
     if (this.impactoAterrizaje > 0) this.#calcularPose(ctx, posesHumano.ajusteAterrizaje);
     if ((this.apuntando || 0) > 0.01) this.#calcularPose(ctx, posesHumano.poseApuntar);
     if (this.recarga > 0) this.#calcularPose(ctx, posesHumano.poseRecargar);

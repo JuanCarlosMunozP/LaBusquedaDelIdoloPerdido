@@ -88,6 +88,11 @@ canvas { display: block; }
   z-index: 10;                      /* por encima del dialogo, los subtitulos y el HUD (z-index 4) */
   backdrop-filter: blur(5px);       /* lo que queda detras se ve difuminado */
 }
+/* pantalla final: la escena (Max junto a la fogata) se ve nitida; solo se oscurece el lado del texto */
+#pantalla.final {
+  backdrop-filter: none; -webkit-backdrop-filter: none;
+  background: linear-gradient(90deg, rgba(14, 6, 16, 0.82) 0%, rgba(14, 6, 16, 0.4) 34%, rgba(14, 6, 16, 0) 58%);
+}
 #caja { max-width: 460px; }
 #subtitulo { margin: 0 0 6px; font-size: 12px; letter-spacing: 0.3em; color: #f0b878; }
 #pantalla-titulo {

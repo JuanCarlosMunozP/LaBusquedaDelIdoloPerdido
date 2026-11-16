@@ -10,6 +10,7 @@ import { avanzarFase } from './mezcla.js';
 import { crearPosesNado } from './posesNado.js';
 import { crearPosesNadoMar } from './posesNadoMar.js';
 import { crearPosesNadoOasis } from './posesNadoOasis.js';
+import { crearPosesSentado } from './posesSentado.js';
 import { crearPosesCombate } from './posesCombate.js';
 import { crearPosesAndar } from './posesAndar.js';
 import { crearPosesRecarga } from './posesRecarga.js';
@@ -404,4 +405,10 @@ export const posesHumano = {
 };
 
 // estilos de nado extra (flotar, braza lenta, crol rapido, espalda): ver posesNado.js
-Object.assign(posesHumano, crearPosesNado(), crearPosesNadoMar(), crearPosesNadoOasis(), crearPosesCombate(), crearPosesAndar(), crearPosesRecarga());
+Object.assign(posesHumano, crearPosesNado(), crearPosesNadoMar(), crearPosesNadoOasis(), crearPosesCombate(), crearPosesAndar(), crearPosesRecarga(), crearPosesSentado());
+
+// En el estanque del oasis, "flotar" usa su propia version con gestos variados (posesNadoOasis.js)
+const flotarDelMar = posesHumano.poseFlotar;
+posesHumano.poseFlotar = function (ctx) {
+  return (ctx.nadando === "oasis" ? posesHumano.poseFlotarOasis : flotarDelMar).call(this, ctx);
+};

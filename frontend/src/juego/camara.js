@@ -3,6 +3,7 @@
 // Tambien lleva la luz calida de relleno que ilumina el rostro cerca del fuego.
 import * as THREE from 'three';
 import { dispositivo } from '../interfaz/dispositivo.js';
+import { CASA_POS } from '../escenario/casa.js';
 
 const DIST_CAMARA = 5.6;
 
@@ -41,6 +42,14 @@ export function crearVista(scene, camera) {
 
   vista.actualizar = (dt, { estado, jugador, mundo, tiempo }) => {
     const enCasa = estado === "victoria";
+    if (enCasa) {
+      // escena final: camara casi fija, de lado, con Max sentado a la derecha y la fogata al centro; solo se mece despacio
+      const a = 0.4 + 0.14 * Math.sin(tiempo * 0.17);
+      objetivoCam.set(CASA_POS.x, 0.78, CASA_POS.z - 0.1);
+      camera.position.set(CASA_POS.x - 2.8 * Math.cos(a), 1.2, CASA_POS.z - 0.1 - 2.8 * Math.sin(a));
+      camera.lookAt(objetivoCam);
+      return;
+    }
     const orbitando = estado === "inicio" || estado === "cargando" || enCasa;
     if (orbitando) {
       // pantalla de inicio: la camara gira alrededor de Max

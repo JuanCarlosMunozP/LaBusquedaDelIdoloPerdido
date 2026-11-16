@@ -17,6 +17,8 @@ import { NIVELES } from './juego/datos.js';
 import { g, jugador, enemigos } from './juego/estadoJuego.js';
 import { renderer, scene, camera, resolucion, bloquearRaton } from './juego/escena.js';
 import { precargarRecursos } from './escenario/recursos.js';
+import { animarEscenaFinal } from './escenario/casa.js';
+import { terminar } from './juego/ciclo.js';
 import { cargarTexturas } from './escenario/texturas.js';
 import { sonido, partida, inventario, suministros, vista, gltfLoader, objetosSueltos } from './juego/servicios.js';
 import './juego/controles.js';
@@ -96,6 +98,7 @@ async function iniciar() {
     g.estado = "jugando";
     hud.pantalla.classList.add("oculta");
     hud.ui.classList.remove("oculta");
+    if (location.hash.includes("final")) terminar("victoria");   // #demo&final: ver la escena final al instante (solo desarrollo)
     return;
   }
   iniciarTutorial(() => g.estado, () => g.nivel);
@@ -135,8 +138,10 @@ function animar() {
       actualizarJugador(dt);
       partida.actualizar(dt, g.tiempo, g.nivel);   // manda mi estado y mueve a los demas jugadores
     } else if (g.axel) {
-      g.axel.actualizar(dt, 0, true, g.tiempo); // Axel respira en el menu
+      // Axel respira en el menu; en la escena final (sentado junto a la fogata) no lleva el sombrero en la mano
+      g.axel.actualizar(dt, 0, true, g.tiempo, 0, false, g.estado === "victoria" ? "oculto" : "mano");
     }
+    if (g.estado === "victoria") animarEscenaFinal(g.tiempo);   // llamas y luz de la fogata
 
     if (g.estado === "jugando" || g.estado === "victoria" || g.estado === "derrota") {
       jugador.direccion = g.axel.direccion;   // los enemigos lo necesitan para saber a que lado le pega la bala

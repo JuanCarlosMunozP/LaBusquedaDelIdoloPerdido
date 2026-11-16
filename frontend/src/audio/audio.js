@@ -155,7 +155,7 @@ export class Sonido {
     // en la isla el mar rodea todo: nunca se calla del todo, y se oye mas fuerte en la orilla
     this.mar.gain.setTargetAtTime(tipo === "mar" ? 0.45 + c * 0.75 : 0, t, 0.4);
     this.volOasis = tipo === "oasis" ? c : 0;
-    this.oasis.gain.setTargetAtTime(tipo === "oasis" ? c * c * 2.2 : 0, t, 0.3);
+    this.oasis.gain.setTargetAtTime(tipo === "oasis" ? 0.12 * c + 2.4 * c * c : 0, t, 0.3);   // se oye desde lejos y sube al acercarse
   }
 
   // (chapoteo y brazada estan en sfx.js)

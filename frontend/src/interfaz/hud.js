@@ -76,6 +76,7 @@ export function pantallaFinal(resultado, segundos, niveles) {
     ? `Max Montenegro encontró el ídolo perdido, cruzó los ${niveles} niveles y volvió a casa en ${segundos} segundos. Por fin puede descansar.`
     : "Los mercenarios te derrotaron. La isla no perdona.";
   hud.boton.textContent = "Jugar de nuevo (R)";
+  hud.pantalla.classList.add("final");        // pantalla final sin difuminar: se ve la escena de atras
   hud.pantalla.classList.remove("oculta");
   hud.ui.classList.add("oculta");
 }
